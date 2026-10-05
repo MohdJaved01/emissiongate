@@ -1,0 +1,586 @@
+{
+  "_provenance": {
+    "source": "Cloud Carbon Footprint (Thoughtworks), Apache-2.0",
+    "repository": "https://github.com/cloud-carbon-footprint/cloud-carbon-footprint",
+    "commit": "f584c549ee358d5980d36513267d007ecd3ee716",
+    "files": [
+      "packages/aws/src/domain/AwsFootprintEstimationConstants.ts",
+      "packages/core/src/FootprintEstimationConstants.ts",
+      "packages/aws/src/lib/AWSInstanceTypes.ts",
+      "packages/core/src/compute/ComputeProcessorTypes.ts"
+    ],
+    "extracted_by": "script, not hand-typed; see factors/README.md",
+    "extracted_on": "2026-09-28",
+    "synthetic": false
+  },
+  "constants": {
+    "pue": 1.135,
+    "memory_kwh_per_gb_hour": 0.000392,
+    "networking_kwh_per_gb": 0.001,
+    "ssd_wh_per_tb_hour": 1.2,
+    "hdd_wh_per_tb_hour": 0.65,
+    "min_watts_per_vcpu_fallback": 0.74,
+    "max_watts_per_vcpu_fallback": 3.5,
+    "server_expected_lifespan_hours": 35040.0,
+    "default_cpu_utilization": 0.5
+  },
+  "replication_factors": {
+    "S3": 6,
+    "S3_ONE_ZONE_REDUCED_REDUNDANCY": 2,
+    "EC2_EBS_VOLUME": 2,
+    "EC2_EBS_SNAPSHOT": 3,
+    "EFS": 3,
+    "EFS_ONE_ZONE": 2,
+    "RDS_BACKUP": 3,
+    "RDS_AURORA": 6,
+    "RDS_MULTI_AZ": 2,
+    "DOCUMENT_DB_BACKUP": 3,
+    "DOCUMENT_DB_STORAGE": 2,
+    "DYNAMO_DB": 2,
+    "ECR_STORAGE": 3,
+    "DOCUMENT_ELASTICACHE_BACKUP": 3,
+    "SIMPLE_DB": 2,
+    "DEFAULT": 1
+  },
+  "processors": {
+    "Apple": {
+      "min_watts": 6.8,
+      "max_watts": 39.0,
+      "kind": "cpu"
+    },
+    "Broadwell": {
+      "min_watts": 0.71,
+      "max_watts": 3.69,
+      "kind": "cpu"
+    },
+    "Cascade Lake": {
+      "min_watts": 0.69,
+      "max_watts": 4.06,
+      "kind": "cpu"
+    },
+    "Coffee Lake": {
+      "min_watts": 1.14,
+      "max_watts": 5.42,
+      "kind": "cpu"
+    },
+    "AMD EPYC 1st Gen": {
+      "min_watts": 0.85,
+      "max_watts": 2.6,
+      "kind": "cpu"
+    },
+    "AMD EPYC 2nd Gen": {
+      "min_watts": 0.47,
+      "max_watts": 1.69,
+      "kind": "cpu"
+    },
+    "AMD EPYC 3rd Gen": {
+      "min_watts": 0.46,
+      "max_watts": 1.96,
+      "kind": "cpu"
+    },
+    "EPYC 4th Gen": {
+      "min_watts": 0.74,
+      "max_watts": 2.28,
+      "kind": "cpu"
+    },
+    "EPYC 5th Gen": {
+      "min_watts": 3.68,
+      "max_watts": 8.96,
+      "kind": "cpu"
+    },
+    "Emerald Rapids": {
+      "min_watts": 0.81,
+      "max_watts": 4.48,
+      "kind": "cpu"
+    },
+    "Granite Rapids": {
+      "min_watts": 0.58,
+      "max_watts": 2.53,
+      "kind": "cpu"
+    },
+    "AWS Graviton2": {
+      "min_watts": 0.47,
+      "max_watts": 1.69,
+      "kind": "cpu"
+    },
+    "AWS Graviton3": {
+      "min_watts": 0.47,
+      "max_watts": 1.69,
+      "kind": "cpu"
+    },
+    "AWS Graviton3E": {
+      "min_watts": 0.47,
+      "max_watts": 1.69,
+      "kind": "cpu"
+    },
+    "AWS Graviton4": {
+      "min_watts": 0.47,
+      "max_watts": 1.69,
+      "kind": "cpu"
+    },
+    "Haswell": {
+      "min_watts": 1.86,
+      "max_watts": 5.6,
+      "kind": "cpu"
+    },
+    "Ice Lake": {
+      "min_watts": 0.77,
+      "max_watts": 3.76,
+      "kind": "cpu"
+    },
+    "Ivy Bridge": {
+      "min_watts": 1.71,
+      "max_watts": 5.56,
+      "kind": "cpu"
+    },
+    "Sandy Bridge": {
+      "min_watts": 2.21,
+      "max_watts": 8.63,
+      "kind": "cpu"
+    },
+    "Sapphire Rapids": {
+      "min_watts": 1.04,
+      "max_watts": 4.16,
+      "kind": "cpu"
+    },
+    "Skylake": {
+      "min_watts": 0.61,
+      "max_watts": 4.1,
+      "kind": "cpu"
+    },
+    "Nvidia B300": {
+      "min_watts": 168.0,
+      "max_watts": 1428.0,
+      "kind": "gpu"
+    },
+    "Nvidia B200": {
+      "min_watts": 120.0,
+      "max_watts": 1020.0,
+      "kind": "gpu"
+    },
+    "Nvidia H200": {
+      "min_watts": 84.0,
+      "max_watts": 714.0,
+      "kind": "gpu"
+    },
+    "Nvidia H100": {
+      "min_watts": 84.0,
+      "max_watts": 714.0,
+      "kind": "gpu"
+    },
+    "Nvidia Tesla A100": {
+      "min_watts": 48.0,
+      "max_watts": 408.0,
+      "kind": "gpu"
+    },
+    "Nvidia RTX PRO 6000": {
+      "min_watts": 72.0,
+      "max_watts": 612.0,
+      "kind": "gpu"
+    },
+    "Nvidia L40S": {
+      "min_watts": 42.0,
+      "max_watts": 357.0,
+      "kind": "gpu"
+    },
+    "Nvidia L4": {
+      "min_watts": 8.64,
+      "max_watts": 73.44,
+      "kind": "gpu"
+    },
+    "Nvidia A10G": {
+      "min_watts": 18.0,
+      "max_watts": 153.0,
+      "kind": "gpu"
+    },
+    "Nvidia T4g": {
+      "min_watts": 8.4,
+      "max_watts": 71.4,
+      "kind": "gpu"
+    },
+    "Nvidia T4": {
+      "min_watts": 8.4,
+      "max_watts": 71.4,
+      "kind": "gpu"
+    },
+    "AMD Radeon Pro V520": {
+      "min_watts": 27.0,
+      "max_watts": 229.5,
+      "kind": "gpu"
+    },
+    "Nvidia V100 PCIe 16GB": {
+      "min_watts": 36.0,
+      "max_watts": 306.0,
+      "kind": "gpu"
+    },
+    "Nvidia V100 SXM2 32GB": {
+      "min_watts": 30.0,
+      "max_watts": 255.0,
+      "kind": "gpu"
+    },
+    "Nvidia Tesla K80": {
+      "min_watts": 36.0,
+      "max_watts": 306.0,
+      "kind": "gpu"
+    },
+    "Nvidia Tesla M60": {
+      "min_watts": 36.0,
+      "max_watts": 306.0,
+      "kind": "gpu"
+    },
+    "Nvidia K520": {
+      "min_watts": 27.0,
+      "max_watts": 229.5,
+      "kind": "gpu"
+    }
+  },
+  "instance_types": {
+    "g5.xlarge": {
+      "vcpu": 4,
+      "memory_gib": 16,
+      "cpu": [
+        "AMD EPYC 2nd Gen"
+      ],
+      "gpu": "Nvidia A10G",
+      "gpu_count": 1
+    },
+    "g5.2xlarge": {
+      "vcpu": 8,
+      "memory_gib": 32,
+      "cpu": [
+        "AMD EPYC 2nd Gen"
+      ],
+      "gpu": "Nvidia A10G",
+      "gpu_count": 1
+    },
+    "g6.xlarge": {
+      "vcpu": 4,
+      "memory_gib": 16,
+      "cpu": [
+        "AMD EPYC 3rd Gen"
+      ],
+      "gpu": "Nvidia L4",
+      "gpu_count": 1
+    },
+    "m5.large": {
+      "vcpu": 2,
+      "memory_gib": 8,
+      "cpu": [
+        "Skylake"
+      ]
+    },
+    "m5.xlarge": {
+      "vcpu": 4,
+      "memory_gib": 16,
+      "cpu": [
+        "Skylake"
+      ]
+    },
+    "m5.2xlarge": {
+      "vcpu": 8,
+      "memory_gib": 32,
+      "cpu": [
+        "Skylake"
+      ]
+    },
+    "m7g.large": {
+      "vcpu": 2,
+      "memory_gib": 8,
+      "cpu": [
+        "AWS Graviton3"
+      ]
+    },
+    "m7g.xlarge": {
+      "vcpu": 4,
+      "memory_gib": 16,
+      "cpu": [
+        "AWS Graviton3"
+      ]
+    },
+    "m7g.2xlarge": {
+      "vcpu": 8,
+      "memory_gib": 32,
+      "cpu": [
+        "AWS Graviton3"
+      ]
+    },
+    "c5.2xlarge": {
+      "vcpu": 8,
+      "memory_gib": 16,
+      "cpu": [
+        "Cascade Lake",
+        "Skylake"
+      ]
+    },
+    "c5.4xlarge": {
+      "vcpu": 16,
+      "memory_gib": 32,
+      "cpu": [
+        "Cascade Lake",
+        "Skylake"
+      ]
+    },
+    "r5.xlarge": {
+      "vcpu": 4,
+      "memory_gib": 32,
+      "cpu": [
+        "Cascade Lake",
+        "Skylake"
+      ]
+    },
+    "r5.2xlarge": {
+      "vcpu": 8,
+      "memory_gib": 64,
+      "cpu": [
+        "Cascade Lake",
+        "Skylake"
+      ]
+    },
+    "r5.4xlarge": {
+      "vcpu": 16,
+      "memory_gib": 128,
+      "cpu": [
+        "Cascade Lake",
+        "Skylake"
+      ]
+    },
+    "t3.medium": {
+      "vcpu": 2,
+      "memory_gib": 4,
+      "cpu": [
+        "Cascade Lake"
+      ]
+    },
+    "db.r5.xlarge": {
+      "vcpu": 4,
+      "memory_gib": 32,
+      "cpu": [
+        "Cascade Lake",
+        "Skylake"
+      ],
+      "note": "vCPU from RDS_INSTANCE_TYPES; processor and memory mapped via EC2 r5 family"
+    },
+    "db.r5.2xlarge": {
+      "vcpu": 8,
+      "memory_gib": 64,
+      "cpu": [
+        "Cascade Lake",
+        "Skylake"
+      ],
+      "note": "vCPU from RDS_INSTANCE_TYPES; processor and memory mapped via EC2 r5 family"
+    },
+    "db.r5.4xlarge": {
+      "vcpu": 16,
+      "memory_gib": 128,
+      "cpu": [
+        "Cascade Lake",
+        "Skylake"
+      ],
+      "note": "vCPU from RDS_INSTANCE_TYPES; processor and memory mapped via EC2 r5 family"
+    }
+  },
+  "regions": {
+    "us-east-1": {
+      "t_per_kwh": 0.0003651277965,
+      "g_per_kwh": 365.1278,
+      "basis": "US NERC SERC"
+    },
+    "us-east-2": {
+      "t_per_kwh": 0.0003761283186,
+      "g_per_kwh": 376.1283,
+      "basis": "US NERC RFC"
+    },
+    "us-west-1": {
+      "t_per_kwh": 0.0002986502059,
+      "g_per_kwh": 298.6502,
+      "basis": "US NERC WECC"
+    },
+    "us-west-2": {
+      "t_per_kwh": 0.0002986502059,
+      "g_per_kwh": 298.6502,
+      "basis": "US NERC WECC"
+    },
+    "us-gov-east-1": {
+      "t_per_kwh": 0.0003651277965,
+      "g_per_kwh": 365.1278,
+      "basis": "US NERC SERC"
+    },
+    "us-gov-west-1": {
+      "t_per_kwh": 0.0002986502059,
+      "g_per_kwh": 298.6502,
+      "basis": "US NERC WECC"
+    },
+    "af-south-1": {
+      "t_per_kwh": 0.00075744,
+      "g_per_kwh": 757.44,
+      "basis": "regional annual"
+    },
+    "ap-east-1": {
+      "t_per_kwh": 0.00067348,
+      "g_per_kwh": 673.48,
+      "basis": "regional annual"
+    },
+    "ap-east-2": {
+      "t_per_kwh": 0.00064142,
+      "g_per_kwh": 641.42,
+      "basis": "regional annual"
+    },
+    "ap-south-1": {
+      "t_per_kwh": 0.00095182,
+      "g_per_kwh": 951.82,
+      "basis": "regional annual"
+    },
+    "ap-south-2": {
+      "t_per_kwh": 0.00095182,
+      "g_per_kwh": 951.82,
+      "basis": "regional annual"
+    },
+    "ap-northeast-1": {
+      "t_per_kwh": 0.00043984,
+      "g_per_kwh": 439.84,
+      "basis": "regional annual"
+    },
+    "ap-northeast-2": {
+      "t_per_kwh": 0.00047739,
+      "g_per_kwh": 477.39,
+      "basis": "regional annual"
+    },
+    "ap-northeast-3": {
+      "t_per_kwh": 0.00043984,
+      "g_per_kwh": 439.84,
+      "basis": "regional annual"
+    },
+    "ap-southeast-1": {
+      "t_per_kwh": 0.00049453,
+      "g_per_kwh": 494.53,
+      "basis": "regional annual"
+    },
+    "ap-southeast-2": {
+      "t_per_kwh": 0.00058023,
+      "g_per_kwh": 580.23,
+      "basis": "regional annual"
+    },
+    "ap-southeast-3": {
+      "t_per_kwh": 0.00071767,
+      "g_per_kwh": 717.67,
+      "basis": "regional annual"
+    },
+    "ap-southeast-4": {
+      "t_per_kwh": 0.00058023,
+      "g_per_kwh": 580.23,
+      "basis": "regional annual"
+    },
+    "ap-southeast-5": {
+      "t_per_kwh": 0.00062051,
+      "g_per_kwh": 620.51,
+      "basis": "regional annual"
+    },
+    "ap-southeast-6": {
+      "t_per_kwh": 7.939e-05,
+      "g_per_kwh": 79.39,
+      "basis": "regional annual"
+    },
+    "ap-southeast-7": {
+      "t_per_kwh": 0.00050824,
+      "g_per_kwh": 508.24,
+      "basis": "regional annual"
+    },
+    "ca-central-1": {
+      "t_per_kwh": 0.00011541,
+      "g_per_kwh": 115.41,
+      "basis": "regional annual"
+    },
+    "ca-west-1": {
+      "t_per_kwh": 0.00011541,
+      "g_per_kwh": 115.41,
+      "basis": "regional annual"
+    },
+    "cn-north-1": {
+      "t_per_kwh": 0.0005374,
+      "g_per_kwh": 537.4,
+      "basis": "regional annual"
+    },
+    "cn-northwest-1": {
+      "t_per_kwh": 0.0005374,
+      "g_per_kwh": 537.4,
+      "basis": "regional annual"
+    },
+    "eu-central-1": {
+      "t_per_kwh": 0.000368,
+      "g_per_kwh": 368.0,
+      "basis": "regional annual"
+    },
+    "eu-central-2": {
+      "t_per_kwh": 0.000368,
+      "g_per_kwh": 368.0,
+      "basis": "regional annual"
+    },
+    "eu-west-1": {
+      "t_per_kwh": 0.000305,
+      "g_per_kwh": 305.0,
+      "basis": "regional annual"
+    },
+    "eu-west-2": {
+      "t_per_kwh": 0.000305,
+      "g_per_kwh": 305.0,
+      "basis": "regional annual"
+    },
+    "eu-west-3": {
+      "t_per_kwh": 7.4e-05,
+      "g_per_kwh": 74.0,
+      "basis": "regional annual"
+    },
+    "eu-south-1": {
+      "t_per_kwh": 0.000297,
+      "g_per_kwh": 297.0,
+      "basis": "regional annual"
+    },
+    "eu-south-2": {
+      "t_per_kwh": 0.000178,
+      "g_per_kwh": 178.0,
+      "basis": "regional annual"
+    },
+    "eu-north-1": {
+      "t_per_kwh": 8e-06,
+      "g_per_kwh": 8.0,
+      "basis": "regional annual"
+    },
+    "il-central-1": {
+      "t_per_kwh": 0.00053982,
+      "g_per_kwh": 539.82,
+      "basis": "regional annual"
+    },
+    "me-south-1": {
+      "t_per_kwh": 0.00050549,
+      "g_per_kwh": 505.49,
+      "basis": "regional annual"
+    },
+    "me-central-1": {
+      "t_per_kwh": 0.0003652,
+      "g_per_kwh": 365.2,
+      "basis": "regional annual"
+    },
+    "mx-central-1": {
+      "t_per_kwh": 0.00041896,
+      "g_per_kwh": 418.96,
+      "basis": "regional annual"
+    },
+    "sa-east-1": {
+      "t_per_kwh": 6.398e-05,
+      "g_per_kwh": 63.98,
+      "basis": "regional annual"
+    },
+    "unknown": {
+      "t_per_kwh": 0.0004215330139,
+      "g_per_kwh": 421.533,
+      "basis": "regional annual"
+    }
+  },
+  "_notes": [
+    "CPU watts are per vCPU; GPU watts are per GPU (idle = min, 100% = max), as in CCF.",
+    "Where an instance maps to several processors, CCF averages their watts; do the same.",
+    "Region factors are annual averages used as grid-intensity tier 3. US regions use NERC subregion factors.",
+    "vCPU/memory for EC2 types come from CCF EC2_INSTANCE_TYPES; GPU type/count from INSTANCE_TYPE_GPU_PROCESSOR_MAPPING and GPU_INSTANCES_TYPES.",
+    "default_cpu_utilization is CCF's AVG_CPU_UTILIZATION_2020 (50%), used by the PR gate only for resources with no observed utilisation; it is an assumption and always reported as one."
+  ]
+}

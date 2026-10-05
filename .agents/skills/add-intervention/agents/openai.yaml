@@ -1,0 +1,6 @@
+interface:
+  display_name: "Add intervention"
+  short_description: "Add a patch template across all six places"
+policy:
+  # Visible so `$name` always resolves; the description restricts when Codex may pick it on its own.
+  allow_implicit_invocation: true

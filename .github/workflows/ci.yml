@@ -1,0 +1,37 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+      - name: Install
+        run: make setup
+      - name: Agent files consistent (AGENTS.md, .codex, .agents, .claude)
+        run: make agent-check
+      - name: Mirror OpenTofu providers (the only networked step)
+        run: make providers
+      - name: Lint
+        run: make lint
+      - name: Test
+        run: make test
+      - name: Offline demo (no LLM, no GitHub token)
+        run: make demo-offline score
+      - name: Upload run artefacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: offline-run
+          path: runs/
+          if-no-files-found: ignore

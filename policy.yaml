@@ -1,0 +1,53 @@
+# Guardrails and ceilings. Read by core/policy.py and orchestrator/budget.py.
+# Changing a threshold changes ground-truth outcomes — re-run `make demo-offline score` after edits.
+version: 1
+
+required_tags: [Environment, Owner]
+missing_required_tag: protect            # fail closed
+
+protected_tags:
+  - key: Role
+    values: [DR, dr, disaster-recovery]
+    action: refuse
+  - key: Criticality
+    values: [prod-critical]
+    action: refuse
+  - key: EmissionGate
+    values: [ignore]
+    action: refuse
+  - key: Retention
+    values: [Regulatory]
+    action: restrict
+    allow_interventions: [storage_tier]
+    forbid: [expiration, deletion]
+
+schedule_allowed_environments: [dev, test, staging]   # or tag ScheduleOk=true
+advisory_only: [region_shift, decommission]
+
+thresholds:
+  lookback_days: 35                  # longer than a month: catches month-end workloads
+  min_datapoints: 500                # hourly points in the window
+  idle_cpu_p95: 0.10
+  idle_gpu_avg: 0.10
+  rightsize_target_p95_max: 0.60     # projected p95 after rightsizing must stay under this
+  schedule_max_active_share: 0.50    # schedule only if active less than half the week
+  weekly_pattern_min_regularity: 0.8 # share of weeks matching the hour-of-week mask
+  min_saving_kg_co2e_yr: 5.0
+  time_shift_allowed_window: "00:00-06:00"
+
+ceilings:
+  max_prs_per_run: 6
+  max_repair_attempts: 3
+  max_llm_calls_per_run: 40
+  max_tokens_per_run: 200000
+  max_wall_seconds: 1800
+
+gate:                                  # PR gate thresholds (docs/GATE.md). Net change per PR, central value.
+  warn_kg_co2e_yr: 25.0
+  ack_kg_co2e_yr: 100.0
+  ack_label: eg/carbon-accepted        # a human adds it with a comment giving the reason
+  assumed_utilisation_band: [0.10, 0.90]
+  assumed_gpu_utilisation: 0.50        # no published default; stated as an assumption
+  max_suggestions: 3
+  watch_paths: ["**/*.tf"]
+

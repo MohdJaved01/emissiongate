@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(make setup)",
+      "Bash(make estate)",
+      "Bash(make demo-offline)",
+      "Bash(make score)",
+      "Bash(make test)",
+      "Bash(make lint)",
+      "Bash(make fmt)",
+      "Bash(.venv/bin/pytest *)",
+      "Bash(.venv/bin/ruff *)",
+      "Bash(.venv/bin/emissiongate estate *)",
+      "Bash(.venv/bin/emissiongate score *)",
+      "Bash(.venv/bin/python -m emissiongate *)",
+      "Bash(tofu init *)",
+      "Bash(tofu fmt *)",
+      "Bash(tofu validate *)",
+      "Bash(tofu plan *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(make agent-check)",
+      "Bash(make providers)",
+      "Bash(.venv/bin/python scripts/check_agent_files.py)"
+    ],
+    "deny": [
+      "Bash(tofu apply *)",
+      "Bash(tofu destroy *)",
+      "Bash(tofu state *)",
+      "Bash(tofu import *)",
+      "Bash(terraform *)",
+      "Bash(aws *)",
+      "Bash(make demo-live)",
+      "Read(./.env)",
+      "Read(./.env.local)"
+    ]
+  }
+}

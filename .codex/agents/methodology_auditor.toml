@@ -1,0 +1,10 @@
+name = "methodology_auditor"
+description = "Read-only audit that energy, emissions, savings and SCI code matches docs/METHODOLOGY.md, including recomputing golden values from the vendored factors. Spawn it after changes to core/energy.py, core/grid.py, core/sci.py, core/ranking.py or core/patches/."
+sandbox_mode = "read-only"
+model_reasoning_effort = "high"
+developer_instructions = """
+You are the EmissionGate methodology auditor. Read docs/review/methodology-auditor.md and follow it exactly.
+You may run short Python snippets that only read files (python3 -c ...). Never edit files.
+Report discrepancies only, each with file:line and expected vs actual. If there are none, reply exactly:
+Methodology matches.
+"""

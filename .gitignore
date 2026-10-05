@@ -1,0 +1,32 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# secrets
+.env
+.env.local
+
+# generated
+data/
+.estate/
+runs/
+emissions.csv
+
+# opentofu
+.tofu-providers/
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# claude code personal settings
+.claude/settings.local.json
+
+.DS_Store

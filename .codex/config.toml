@@ -1,0 +1,12 @@
+# Codex project layer for EmissionGate.
+# Loaded only after you mark this project as trusted (Codex asks on first launch; `/status` shows it).
+# Machine-specific settings — model provider, auth, profiles, the model itself — belong in
+# ~/.codex/config.toml. Project config cannot override those anyway.
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+# Tests, the estate generator and offline mode need no network (AGENTS.md invariant 10).
+# Setup, provider mirroring, model pulls, local/live demos and the bake-off are run by a human.
+network_access = false

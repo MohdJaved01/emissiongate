@@ -1,0 +1,6 @@
+interface:
+  display_name: "Model bake-off"
+  short_description: "Pick the runtime LLM on measured evidence"
+policy:
+  # Visible so `$name` always resolves; the description restricts when Codex may pick it on its own.
+  allow_implicit_invocation: true

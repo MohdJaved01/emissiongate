@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "emissiongate"
+version = "0.1.0"
+description = "Carbon at merge time: finds cloud waste, quantifies kgCO2e per resource, delivers the fix as a pull request."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+dependencies = [
+  "duckdb>=1.5,<2",
+  "pandas>=3.0,<4",
+  "pyarrow>=25",
+  "pydantic>=2.13,<3",
+  "pyyaml>=6.0.3",
+  "typer>=0.27",
+  "rich>=15",
+  "httpx>=0.28,<1",
+  "jinja2>=3.1.6",
+  "python-dotenv>=1.2",
+  "codecarbon>=3.3,<4",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=9.1",
+  "pytest-cov>=7.1",
+  "respx>=0.23",
+  "ruff>=0.16",
+]
+
+[project.scripts]
+emissiongate = "emissiongate.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+emissiongate = ["llm/prompts/*.j2", "report/templates/*.j2"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# Given with the design kit; long diagnostic strings are kept verbatim.
+"scripts/check_agent_files.py" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "tofu: needs the OpenTofu binary; skipped if absent",
+  "slow: full pipeline runs",
+]
+addopts = "-q"

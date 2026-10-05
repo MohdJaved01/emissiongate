@@ -1,0 +1,10 @@
+# Written by `emissiongate sync-feedback` from closed PRs labelled eg/*. Humans may edit; git is the audit trail.
+# Entry shape:
+#   - resource_id: dev-api
+#     intervention: schedule          # or "*" for all interventions
+#     label: eg/false-positive        # eg/false-positive | eg/needs-context | eg/wrong-fix
+#     until: null                     # ISO date for eg/needs-context (90 days), null = permanent
+#     source_pr: https://github.com/owner/emissiongate-demo-estate/pull/7
+#     recorded_at: 2026-10-01T10:00:00Z
+version: 1
+suppressions: []

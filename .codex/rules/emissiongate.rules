@@ -1,0 +1,68 @@
+# Codex command rules for EmissionGate (Starlark). Loaded only when this project is trusted.
+#
+# Rules decide what Codex may run OUTSIDE the sandbox (escalations). They are a development-time
+# guardrail, not the safety mechanism: the real guarantees are structural — no apply path exists in the
+# code (invariant 3), the sandbox has no network, and the estate uses dummy credentials.
+#
+# Test a command:
+#   codex execpolicy check --pretty --rules .codex/rules/emissiongate.rules -- tofu apply -auto-approve
+
+prefix_rule(
+    pattern = ["tofu", ["apply", "destroy", "import", "state", "taint", "untaint", "force-unlock"]],
+    decision = "forbidden",
+    justification = "EmissionGate never changes infrastructure (AGENTS.md invariant 3). Validation is fmt, validate and plan only.",
+    match = [
+        "tofu apply",
+        "tofu apply -auto-approve",
+        "tofu destroy -auto-approve",
+        "tofu state rm aws_instance.x",
+    ],
+    not_match = [
+        "tofu plan -refresh=false",
+        "tofu validate",
+        "tofu init -plugin-dir=.tofu-providers",
+    ],
+)
+
+prefix_rule(
+    pattern = ["terraform"],
+    decision = "forbidden",
+    justification = "The toolchain is OpenTofu (ADR-0006). Terraform 1.6+ is BUSL-licensed.",
+    match = ["terraform plan", "terraform apply -auto-approve"],
+)
+
+prefix_rule(
+    pattern = ["aws"],
+    decision = "forbidden",
+    justification = "No AWS CLI in development or at runtime (invariant 3). All data is synthetic (invariant 12).",
+    match = ["aws s3 ls", "aws ec2 terminate-instances --instance-ids i-123"],
+)
+
+prefix_rule(
+    pattern = ["make", "demo-live"],
+    decision = "forbidden",
+    justification = "Live mode opens real pull requests. A human runs it from their own terminal.",
+    match = ["make demo-live"],
+    not_match = ["make demo-offline"],
+)
+
+prefix_rule(
+    pattern = ["make", ["setup", "providers", "models", "demo", "grid-snapshot", "bakeoff"]],
+    decision = "prompt",
+    justification = "Needs network or the local Ollama server. Prefer asking the human to run it in their own terminal.",
+    match = ["make providers", "make demo", "make bakeoff"],
+    not_match = ["make demo-offline", "make test"],
+)
+
+prefix_rule(
+    pattern = ["git", "push"],
+    decision = "prompt",
+    justification = "Pushing publishes work. Confirm each push.",
+)
+
+prefix_rule(
+    pattern = ["git", ["reset", "clean", "rebase", "filter-branch", "filter-repo"]],
+    decision = "prompt",
+    justification = "Can destroy local work or rewrite the commit history that proves when work was done.",
+    match = ["git reset --hard HEAD~1", "git clean -fdx", "git rebase -i HEAD~3"],
+)

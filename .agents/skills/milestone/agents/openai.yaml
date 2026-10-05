@@ -1,0 +1,7 @@
+interface:
+  display_name: "Milestone"
+  short_description: "Build one BUILD_PLAN.md milestone end to end"
+  default_prompt: "Implement milestone M0 from docs/BUILD_PLAN.md."
+policy:
+  # Visible so `$name` always resolves; the description restricts when Codex may pick it on its own.
+  allow_implicit_invocation: true
