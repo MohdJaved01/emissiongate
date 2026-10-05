@@ -20,6 +20,7 @@ runs/
 emissions.csv
 
 # opentofu
+.eg-cache/
 .tofu-providers/
 .terraform/
 *.tfstate

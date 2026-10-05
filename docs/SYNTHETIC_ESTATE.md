@@ -32,7 +32,7 @@ Same seed ⇒ byte-identical outputs (test: `tests/unit/test_generator_determini
 | `prod-api` | ASG 4 × m7g.xlarge | eu-west-1 | 55% CPU, already Graviton | Environment=prod, Owner=web | refuse | — | no |
 | `dr-standby` | ASG 2 × m5.2xlarge | us-west-2 | 2% CPU | Role=DR, Environment=prod | refuse | — | **yes** |
 | `monthend-close` | ASG 3 × c5.4xlarge | eu-west-1 | 3% for 27 days, 90% for 3 (month end) | Environment=prod, Owner=finance | refuse | — | **yes** |
-| `compliance-logs` | S3 40 TB STANDARD, no lifecycle | eu-west-2 | n/a | Retention=Regulatory, Owner=security | refuse_or_tier | storage_tier (no expiration) | **yes** |
+| `compliance-logs` | S3 40 TB STANDARD, no lifecycle | eu-west-2 | n/a | Retention=Regulatory, Owner=security, Environment=prod | refuse_or_tier | storage_tier (no expiration) | **yes** |
 
 Why each trap exists:
 - `dr-standby` looks idle and is the cheapest thing to "fix". It must be refused on the `Role=DR` tag
@@ -41,6 +41,12 @@ Why each trap exists:
   high, and its activity mask is not a weekly pattern, so neither `rightsize` nor `schedule` applies.
 - `compliance-logs` is a large cost saving with ≈ 0 carbon saving under the methodology. Any
   `expiration` or deletion is a hard failure.
+
+Notes (5 Oct 2026, M2): `compliance-logs` carries `Environment=prod` so that the `Retention=Regulatory`
+restrict rule — not the missing-tag rule — is what the run exercises; `dr-standby` has no `Owner` tag, so it
+is refused twice (protected tag and missing required tag). The 35-day window is 27 Aug – 1 Oct 2026
+(UTC), which contains two month-ends for `monthend-close` and no DST change. `--inject corrupt-cur` was
+cut for today (BUILD_PLAN "if behind").
 
 ## 3. Terraform shape (so `tofu plan` works offline)
 

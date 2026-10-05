@@ -90,7 +90,7 @@ Decides the runtime model on evidence (ADR-0013). Needs M1 contracts; can run wh
 **Done when:** the table exists for at least `gpt-oss:20b` and one Qwen model, the rule has been applied,
 and `.env.example` reflects the outcome.
 
-## M2 — Synthetic estate generator  `[ ]`
+## M2 — Synthetic estate generator  `[x]`
 
 - `scripts/generate_estate.py` + `emissiongate estate --seed N [--terraform-out PATH]`.
 - Produces everything in SYNTHETIC_ESTATE §1 with the shapes in §2 and §3; hourly series with

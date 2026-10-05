@@ -262,6 +262,26 @@ the milestone. Entries are factual: what failed is recorded, not smoothed over.
   recorded): storage-class mapping stays in code with a CCF citation; network kWh unused in v1.
 - **Evidence:** `tests/golden/test_golden_energy.py` — G1–G4 at 3 dp; `pytest` 48 passed.
 
+### 5 Oct 2026 15:30 IST — M2 Synthetic estate generator — Claude Code
+- **Attempted:** `/milestone M2`: seeded generator for CUR, metrics, prices, CCFT totals, ground truth,
+  manifest and the Terraform estate; offline `tofu validate`.
+- **Output:** `src/emissiongate/estate/` (generator in the package so the estate repo's CI can run
+  `emissiongate estate --telemetry-only` after install; `scripts/generate_estate.py` is a thin wrapper);
+  `core/hcl.py` writes `tofu fmt`-clean HCL and edits one attribute inside one named block;
+  `tools/tf.py` (plan-only: `init -plugin-dir`, `fmt -check`, `validate`, `plan -refresh=false`,
+  `show -json`; any other subcommand raises; `AWS_*` env vars stripped).
+- **Decision:** accepted (human approval requested with the commit). `--inject corrupt-cur` cut per plan.
+- **Errors found:** (1) by Claude Code's timing check: the first `tofu validate` in each fresh workspace
+  took 44–49 s on Windows (first run of a newly copied 800 MB provider binary) against 3 s afterwards;
+  (2) the doc's tag list for `compliance-logs` would have refused it on a missing `Environment` tag before
+  the regulatory rule was ever exercised — judged a test-design gap, not a trap change.
+- **Corrective steps:** shared `TF_DATA_DIR` (`.eg-cache/tofu-data`, gitignored): the provider is installed
+  from the mirror once per machine, next workspaces validate in ~3 s. `Environment=prod` added to
+  `compliance-logs`, recorded in SYNTHETIC_ESTATE.
+- **Evidence:** `tests/unit/test_generator.py`: same seed → identical SHA-256 manifest; 10 ground-truth
+  entries, 3 traps; versions.tf copied; every output labelled synthetic; exact pattern means;
+  `@tofu` test: init from the mirror + fmt + validate + plan pass offline. `pytest` 55 passed.
+
 ---
 
 ## Totals (fill in at submission)
