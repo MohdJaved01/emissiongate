@@ -1,12 +1,5 @@
-# Data contracts
+"""Interface between every component. Source of truth: docs/DATA_CONTRACTS.md (copied verbatim)."""
 
-These models are the interface between every component. Milestone M1 copies this block into
-`src/emissiongate/contracts.py` verbatim, then tests it. Change the contracts here first, then the code.
-
-Rules: every model is frozen; units are in field names; money is synthetic; no LLM-facing model has a
-numeric carbon, energy or cost field.
-
-```python
 from __future__ import annotations
 
 from datetime import datetime
@@ -354,16 +347,3 @@ class Score(Frozen):
     trap_violations: list[str]
     carbon_rank_order: list[str]
     cost_rank_order: list[str]
-```
-
-## Validation rules outside the type system
-
-- `Utilisation` gained five optional fields on 5 Oct 2026 (M4): `running_hour_share`,
-  `cpu_avg_off_mask`, `gpu_avg_off_mask`, `weekly_regularity`, `mask_coverage`. `schedule` savings use the
-  off-mask utilisation (METHODOLOGY §3); `mask_coverage` stops a monthly pattern from passing as weekly.
-
-- `PatchDecision.params` keys ⊆ candidate option names, values ∈ `allowed`. Anything else → re-ask once,
-  then use `Candidate.default_params`.
-- `Narrative` text is scanned for digits adjacent to `kg`, `kWh`, `t`, `%`, `$`, `USD`, `CO2`. Any match →
-  discard the narrative and use the templated summary. Log `kind=fallback, detail.reason=numeric_claim`.
-- `LedgerEvent.detail` holds scalars only; large payloads are stored by hash in `runs/<id>/blobs/`.
