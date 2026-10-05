@@ -144,7 +144,7 @@ cost order.
 **Done when:** `make demo-offline` produces `runs/<id>/` with ledger, manifest, report and PR drafts;
 `--resume` continues from a killed run; `tests/ground_truth/` passes the offline thresholds.
 
-## M6.5 — PR gate  `[ ]`  ← the thesis, demo-able in CI
+## M6.5 — PR gate  `[x]` (live PR on the estate repo: see README)  ← the thesis, demo-able in CI
 
 Spec: `docs/GATE.md`. Reuses core/, Strategist, Validator and ledger; adds a diff collector and a reporter.
 
@@ -168,7 +168,7 @@ Spec: `docs/GATE.md`. Reuses core/, Strategist, Validator and ledger; adds a dif
 and a validated Graviton suggestion; a tags-only PR produces no comment; a PR with invalid HCL is "not
 evaluated" and does not fail the check; the job never needs network beyond the cached provider mirror.
 
-## M7 — Local LLM layer  `[ ]`
+## M7 — Local LLM layer  `[x]` (minimal scope: decisions, repair, narrative)
 
 - `llm/client.py` protocol; extend the M1.5 `llm/ollama.py`: `think` level per call site from config
   (`EG_THINK_SMALL`/`EG_THINK_LARGE`), `options.temperature`, `options.num_ctx`; records model, think level,

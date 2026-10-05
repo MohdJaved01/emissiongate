@@ -1,0 +1,20 @@
+Choose the parameters for one infrastructure change.
+
+Candidate: {{ candidate.candidate_id }}
+Template (fixed): {{ candidate.intervention }}
+Resource: {{ resource.resource_id }} ({{ resource.kind }}{% if resource.instance_type %}, {{ resource.instance_type }}{% endif %}), region {{ resource.region }}
+Tags: {% for k, v in resource.tags | dictsort %}{{ k }}={{ v }}{% if not loop.last %}, {% endif %}{% endfor %}
+
+Observed behaviour (35-day window): {% if util.cpu_avg is not none %}CPU average {{ "%.2f" | format(util.cpu_avg) }}, CPU p95 {{ "%.2f" | format(util.cpu_p95) }}{% endif %}{% if util.gpu_avg is not none %}, GPU average {{ "%.2f" | format(util.gpu_avg) }}{% endif %}{% if util.active_hour_share is not none %}, active share of hours {{ "%.2f" | format(util.active_hour_share) }}, weekly regularity {{ "%.2f" | format(util.weekly_regularity) }}{% endif %}.
+{% if alternatives %}Other templates were also eligible ({{ alternatives | join(", ") }}) but saved less carbon; keep the fixed template.{% endif %}
+
+Allowed values (choose exactly one per parameter; the first is the rule-based default):
+{% for o in candidate.options %}
+- {{ o.name }}: {{ o.allowed | tojson }}
+{% endfor %}
+
+Guidance: prefer the choice that removes the most idle capacity while keeping the observed activity
+served. For schedules, padding the window protects users from cold starts; the exact window removes
+more idle hours. Explain your choice in one or two sentences in `rationale`, without numbers.
+
+Reply with JSON: {"candidate_id": "{{ candidate.candidate_id }}", "template": "{{ candidate.intervention }}", "params": {...}, "rationale": "..."}

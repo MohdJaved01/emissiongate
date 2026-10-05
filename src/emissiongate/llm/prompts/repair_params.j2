@@ -1,0 +1,18 @@
+A rendered change failed OpenTofu validation. Choose parameters that will pass.
+
+Candidate: {{ candidate.candidate_id }}
+Template (fixed): {{ candidate.intervention }}
+Parameters that were tried: {{ decision.params | tojson }}
+Failed command: {{ command }}
+Error output (tail):
+{{ stderr }}
+
+Allowed values (choose exactly one per parameter; never invent a value):
+{% for o in candidate.options %}
+- {{ o.name }}: {{ o.allowed | tojson }}
+{% endfor %}
+
+If the error is not caused by the parameters (for example a renderer or environment problem), return
+the same allowed parameters and say so in `rationale`. No numbers in `rationale`.
+
+Reply with JSON: {"candidate_id": "{{ candidate.candidate_id }}", "template": "{{ candidate.intervention }}", "params": {...}, "rationale": "..."}

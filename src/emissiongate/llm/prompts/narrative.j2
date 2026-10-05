@@ -1,0 +1,16 @@
+Write the "Why" paragraph and the risks for a pull request that a platform engineer will review.
+
+Change: {{ candidate.intervention }} on {{ candidate.resource_id }}
+Chosen parameters: {{ params | tojson }}
+Facts already stated elsewhere in the PR (do not repeat any figures):
+{% for n in notes %}
+- {{ n }}
+{% endfor %}
+
+Write `summary`: two or three plain sentences explaining why this change is reasonable and what the
+reviewer should check. Write `risks`: up to three short items a reviewer should consider.
+
+Strict rule: no numbers of any kind (no digits, no percentages, no kg, kWh, dollars or counts). The PR
+already shows every figure from deterministic code; prose with numbers is discarded.
+
+Reply with JSON: {"summary": "...", "risks": ["...", "..."]}

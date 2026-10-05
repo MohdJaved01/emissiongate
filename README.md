@@ -150,16 +150,16 @@ This was built in a hackathon. The design covers more than the code does; this t
 
 | Capability | Milestone | Status |
 |---|---|---|
-| Synthetic estate with traps and ground truth | M2 | TODO |
-| Energy and emissions model, golden values G1–G7 | M3 | TODO |
-| Guardrails, carbon ranking, five fix templates, `tofu plan` validation | M4–M5 | TODO |
-| Sweep end to end, offline, with PR drafts, report and scoring | M6 | TODO |
-| Agent's own energy and kgCO2e in the report (CodeCarbon) | M10 (part) | TODO |
-| PR gate in GitHub Actions with comment, check and acknowledgement label | M6.5 | TODO |
-| Local LLM for parameter choice and PR narrative, offline fallback | M7 (part) | TODO |
+| Synthetic estate with traps and ground truth | M2 | built — byte-identical per seed, plans offline |
+| Energy and emissions model, golden values G1–G7 | M3 | built — G1–G7 tested to 3 decimals |
+| Guardrails, carbon ranking, five fix templates, `tofu plan` validation | M4–M5 | built |
+| Sweep end to end, offline, with PR drafts, report and scoring | M6 | built (`--resume` not built) |
+| Agent's own energy and kgCO2e in the report (CodeCarbon) | M10 (part) | built — labelled estimated (RAM is modelled) |
+| PR gate in GitHub Actions with comment, check and acknowledgement label | M6.5 | built |
+| Local LLM for parameter choice and PR narrative, offline fallback | M7 (part) | built (scan planning and classification not built) |
 | Model bake-off (gpt-oss vs Qwen, measured) | M1.5 | designed, not built |
 | Opening real PRs and learning from rejection labels | M8 | designed, not built |
-| Live UK grid API (a committed snapshot is used instead) | M9 | designed, not built |
+| Live UK grid API (a committed snapshot is used instead) | M9 | snapshot fetcher built and one real snapshot committed; live tier at run time not built |
 | Calibration of gate predictions against observed load | M10 (part) | designed, not built |
 
 ## Known limitations

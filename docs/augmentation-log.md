@@ -354,6 +354,77 @@ the milestone. Entries are factual: what failed is recorded, not smoothed over.
   `tests/ground_truth/test_offline_pipeline.py` (thresholds, ledgered transitions, PR numbers from core,
   `--inject bad-param` repaired on attempt 2), `tests/unit/test_claims.py`.
 
+### 5 Oct 2026 14:31 IST — M9 (part) UK grid snapshot — Claude Code, network step approved by the human
+- **Attempted:** recall was 0.80 because `time_shift` had no grid data; the human approved fetching one
+  snapshot from the public UK Carbon Intensity API (no key, CC BY 4.0) and committing it.
+- **Output:** `tools/grid_uk.py` (httpx, 5 s timeout, 2 retries; London region id looked up via
+  `/regional`, found 13), `emissiongate grid-snapshot`, `fixtures/grid/uk_london_2026-10-05.json`
+  (336 history + 97 forecast half-hour slots, labelled `synthetic: false`, with attribution).
+- **Decision:** accepted (human approved the fetch).
+- **Errors found:** the day parser crashed on the daily recurrence `0 2 * * *` (`*` days) — found on the
+  first run with the snapshot.
+- **Corrective steps:** `*` handled. Result reported as it is: moving the 2-hour batch inside 00:00–06:00
+  saves **0.035 kgCO2e/yr** on this week's London grid, below `min_saving_kg_co2e_yr` (5), so it is an
+  advisory, not a PR. Recall stays 0.80; the threshold was not tuned.
+- **Evidence:** ledger event for `nightly-etl:time_shift` with tiers `snapshot,vendored`.
+
+### 5 Oct 2026 15:58 IST — M6.5 PR gate — Claude Code; review by invariant-reviewer subagent
+- **Attempted:** `/milestone M6.5`: diff collector over `tofu show -json` of base and head, projections
+  (METHODOLOGY §3b, G5–G7), suggestions from the sweep's templates validated with `tofu plan`, sticky
+  comment, acknowledgement label, prediction record, the estate repo's workflow.
+- **Output:** `orchestrator/gate.py`, `agents/{diff_collector,reporter}.py`, `core/{projection,safety}.py`,
+  `tools/{github,gitrefs}.py`, `report/templates/gate_comment.md.j2`, CLI `gate`; `estate-repo/`
+  (workflow, README, .gitignore) and `scripts/build_estate_repo.py`. The workflow the docs called
+  "given" was not in the kit; it was written today.
+- **Decision:** accepted (human approval requested with the commit).
+- **Errors found:** (1) by Claude Code: `agents/reporter.py` imported from `orchestrator/` (wrong import
+  direction); the not-evaluated message repeated itself and dumped the whole `tofu init` output.
+  (2) Invariant-reviewer subagent, no P0, **8 P1**: the documented "comment, then label" order was
+  rejected by the code; an acknowledgement carried over to later pushes; GitHub errors (fork 403) and an
+  unparseable cron day could fail the check outside the thresholds; the "before" side and suggestions
+  of assumed resources were not published as ranges; the comment cited no ledger event ids and
+  suggestions were unledgered; several tofu/git/metrics/GitHub calls and the plan-failure stderr were
+  unledgered; **untrusted PR HCL was planned with `GITHUB_TOKEN` in tofu's environment and with backend
+  init enabled** (a data source with custom endpoints plus `file("/proc/self/environ")` could have
+  exfiltrated it); the gate ignored `policy.yaml → ceilings`. P2: storage rows labelled "observed",
+  hard-coded window length, unknown schedule capacity defaulted to 0, assumed schedule hard-coded.
+- **Corrective steps:** acknowledgement = latest `User` label event plus a `User` reason comment, either
+  order, both newer than the head commit (re-acknowledge after a push); GitHub errors ledgered as
+  `fallback`, exit code follows status only; numeric cron days parsed, unknown recurrences → not
+  quantified; `Projection` and `GateSuggestion` carry the assumption band on both sides
+  (DATA_CONTRACTS updated first); projection and suggestion ledger ids in the comment; every tool call
+  ledgered; tofu env strips tokens/secrets, `init -backend=false`, `core/safety.py` refuses data sources,
+  non-local modules, custom endpoints, remote backends, non-AWS providers and absolute-path file reads
+  before any plan; workflow checkouts use `persist-credentials: false`; `Budget(policy.ceilings)` checked
+  before each plan; assumed schedule moved to `policy.yaml → gate.assumed_schedule`.
+- **Evidence:** G5–G7 to 3 decimals (`tests/golden/test_golden_gate.py`); `tests/ground_truth/
+  test_gate_scenarios.py`: 2 × g5.2xlarge → `ack_required`, +683.5 (263.1–1,103.9) with a validated,
+  ledgered schedule suggestion (assumed range); legacy-worker 6→10 → `pass_with_warning` +59.2 with
+  Graviton −232.2; tags-only → no comment; invalid HCL → `not_evaluated`, exit 0; data source → not
+  planned. `tests/unit/test_gate_github.py` (respx): bot label refused, reason before/after label,
+  no carry-over after a push, sticky comment PATCH/POST. `tests/unit/test_safety.py`. `pytest` 148 passed.
+
+### 5 Oct 2026 15:58 IST — M7 Local LLM layer (minimal) — Claude Code
+- **Attempted:** `/milestone M7` minimal scope (BUILD_PLAN today): the LLM chooses template parameters and
+  writes the PR narrative; schema re-ask, then rule fallback; repair from plan stderr.
+- **Output:** `llm/{client,ollama,factory,calls}.py`, prompts `system.j2`, `decide_patch.j2`,
+  `repair_params.j2`, `narrative.j2`. Non-streaming `/api/chat`, `format` = pydantic schema, `think` per
+  tier from `EG_THINK_*`, `num_ctx` and temperature explicit (0 for decisions, 0.3 for prose), fence
+  stripping, one re-ask, `None` → deterministic path; `message.thinking` stored only as a SHA-256.
+  Every call ledgered with `model@think`, prompt/completion tokens and duration; budget charged.
+  Not built: scan planning and ambiguous classification call sites.
+- **Decision:** accepted (human approval requested with the commit). The human approved installing
+  Ollama and pulling `gpt-oss:20b` at 13:20.
+- **Errors found:** none in the LLM path during the run; the numeric-claim guard and parameter validation
+  came from the M6 invariant review.
+- **Evidence:** real run `20261005T091433Z-local-s42` on this laptop (CPU inference): 8 LLM calls, 8/8
+  schema-valid first try, 0 fallbacks, 6,624 tokens, 14–123 s per call; all 4 decisions by the model,
+  within allowed values (it chose the rule defaults); narratives contain no numbers; every plan passed
+  first attempt. Agent energy 0.005228 kWh (estimated) vs 0.000345 kWh offline → marginal LLM energy
+  ≈ 0.0049 kWh per run. `tests/unit/test_llm.py` (fake transport): fenced JSON, re-ask, double failure,
+  connection error, disallowed values → rule, numeric-claim narrative → template, ledger has tokens and
+  no thinking text.
+
 ---
 
 ## Totals (fill in at submission)

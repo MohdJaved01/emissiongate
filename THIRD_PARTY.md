@@ -54,6 +54,13 @@ neighbouring problems. No code from either is used. Differences are listed in `d
 
 ## Development tooling
 
-OpenAI Codex (primary) and Claude Code (Anthropic) were used as coding assistants during development.
-All generated code was reviewed by the team; agent instructions are in `AGENTS.md`.
-<!-- keep or edit this line to match your organisation's disclosure policy -->
+Claude Code (Anthropic) wrote all code in this repository on build day (ADR-0016, ADR-0017); OpenAI
+Codex built an earlier M0 prototype that is not in this repository. Every milestone was approved by a
+human before it was committed; agent instructions are in `AGENTS.md`; the augmentation log records who
+did what.
+
+| Build-day tool | Use | Licence |
+|---|---|---|
+| uv | create the virtualenv and install the Python dependencies | MIT / Apache-2.0 |
+| OpenTofu 1.13 (winget `OpenTofu.Tofu`) | local `fmt`/`validate`/`plan` | MPL-2.0 |
+| Ollama 0.35 (winget `Ollama.Ollama`) | local model server for `gpt-oss:20b` | MIT |
