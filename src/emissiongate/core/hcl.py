@@ -39,6 +39,8 @@ def qlist(values: list[str]) -> str:
 def render(block: Block, depth: int = 0) -> str:
     pad = INDENT * depth
     head = " ".join([block.kind, *(q(label) for label in block.labels)])
+    if not block.body:
+        return f"{pad}{head} {{}}"
     lines = [f"{pad}{head} {{"]
     group: list[Attr] = []
 

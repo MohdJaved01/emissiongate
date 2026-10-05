@@ -203,7 +203,7 @@ the milestone. Entries are factual: what failed is recorded, not smoothed over.
 
 <!-- build-day entries go below this line -->
 
-### 5 Oct 2026 13:40 IST — M0 Scaffold — Claude Code
+### 5 Oct 2026 13:38 IST — M0 Scaffold — Claude Code
 - **Attempted:** environment bring-up and `/milestone M0`: package layout, typer CLI with stub commands,
   architecture test.
 - **Output:** `src/emissiongate/` with `cli`, `orchestrator`, `agents`, `core` (+`patches`), `llm`, `tools`,
@@ -223,7 +223,7 @@ the milestone. Entries are factual: what failed is recorded, not smoothed over.
 - **Evidence:** `ruff check` and `ruff format --check` clean; `pytest` 7 passed; `python -m emissiongate
   --help` lists estate, run, gate, score, sync-feedback, grid-snapshot, report; `agent-check` consistent.
 
-### 5 Oct 2026 14:20 IST — M1 Contracts, factors, ledger — Claude Code
+### 5 Oct 2026 13:48 IST — M1 Contracts, factors, ledger — Claude Code
 - **Attempted:** `/milestone M1`: `contracts.py` from DATA_CONTRACTS, factor loader with provenance,
   append-only SQLite ledger.
 - **Output:** `contracts.py` (copied verbatim by script from the doc's code block; five optional
@@ -242,7 +242,7 @@ the milestone. Entries are factual: what failed is recorded, not smoothed over.
   `tests/unit/test_ledger.py` (UPDATE/DELETE rejected, closed DB write raises), `test_contracts.py`
   (frozen, extra forbidden, LLM-facing models have no numeric fields).
 
-### 5 Oct 2026 14:45 IST — M3 Energy and emissions — Claude Code; review by methodology-auditor subagent
+### 5 Oct 2026 13:48 IST — M3 Energy and emissions — Claude Code; review by methodology-auditor subagent
 - **Attempted:** `/milestone M3`, tests first: golden G1–G4, then `core/energy.py` and `core/grid.py`.
 - **Output:** `compute()` (per-vCPU and per-GPU watts, EG-simplification-1 memory, PUE),
   `storage()` (SSD/HDD × replication × PUE), `kg_co2e`, `emission_record()` merging coefficient and grid
@@ -262,7 +262,7 @@ the milestone. Entries are factual: what failed is recorded, not smoothed over.
   recorded): storage-class mapping stays in code with a CCF citation; network kWh unused in v1.
 - **Evidence:** `tests/golden/test_golden_energy.py` — G1–G4 at 3 dp; `pytest` 48 passed.
 
-### 5 Oct 2026 15:30 IST — M2 Synthetic estate generator — Claude Code
+### 5 Oct 2026 13:58 IST — M2 Synthetic estate generator — Claude Code
 - **Attempted:** `/milestone M2`: seeded generator for CUR, metrics, prices, CCFT totals, ground truth,
   manifest and the Terraform estate; offline `tofu validate`.
 - **Output:** `src/emissiongate/estate/` (generator in the package so the estate repo's CI can run
@@ -281,6 +281,46 @@ the milestone. Entries are factual: what failed is recorded, not smoothed over.
 - **Evidence:** `tests/unit/test_generator.py`: same seed → identical SHA-256 manifest; 10 ground-truth
   entries, 3 traps; versions.tf copied; every output labelled synthetic; exact pattern means;
   `@tofu` test: init from the mirror + fmt + validate + plan pass offline. `pytest` 55 passed.
+
+### 5 Oct 2026 14:10 IST — M4 Collector, policy, ranking — Claude Code
+- **Attempted:** `/milestone M4`: DuckDB CUR reader, metrics reader, collector, fail-closed policy,
+  savings per template, carbon and cost ranks.
+- **Output:** `tools/cur.py`, `tools/metrics.py`, `agents/collector.py`, `agents/quantifier.py`,
+  `agents/strategist.py`; `core/utilisation.py` (35-day window, `min_datapoints`, hour-of-week mask,
+  weekly regularity, mask coverage, off-mask load), `core/policy.py` (refuse → missing tag → restrict →
+  suppressions; malformed policy raises `PolicyError`), `core/interventions.py` (eligibility, allowed
+  values, defaults, savings recomputed from chosen params), `core/ranking.py`. New threshold
+  `schedule_min_mask_coverage: 0.95` in `policy.yaml`.
+- **Decision:** accepted (human approval requested with the commit).
+- **Errors found (by Claude Code, from the first sweep output):** (1) S3 size used binary TB (×1024) while
+  EBS and METHODOLOGY G4 use decimal TB — 40 TB showed 1588 kWh instead of 1551.046; (2) a garbled
+  `count` expression in the collector; (3) a guardrail check that detected refusals by string suffix —
+  fragile for a fail-closed rule; (4) without a coverage check, `monthend-close` (idle in 4 of 5 weeks)
+  scored 0.8 weekly regularity, enough to pass as "weekly".
+- **Error found in this log (by Claude Code, checking the clock):** the M1, M3 and M2 entries had
+  been stamped with estimated times (14:20–15:30) that were later than the real commits. Corrected to
+  the commit times from `git log` (13:48, 13:48, 13:58).
+- **Corrective steps:** decimal TB everywhere; explicit refusal/restriction lists; `mask_coverage`
+  threshold (monthend coverage = 0.0, dev-api = 1.0); schedule also blocked by `Environment=prod`.
+- **Evidence:** seed 42: carbon order gpu-inference (−258.1), legacy-worker (−218.6), reporting-db
+  (−96.6), dev-api (−34.8); cost order gpu, reporting-db, dev-api, legacy-worker; dr-standby blocked by
+  `tag:Role=DR` + `missing-tag:Owner`; monthend-close no candidate (p95 0.92, coverage 0); compliance-logs
+  storage_tier only, ≈0 kg, 9.1k USD synthetic, `expiration` forbidden; orphaned-ebs decommission
+  advisory. `tests/unit/test_strategy_m4.py`, `tests/unit/test_policy.py`.
+
+### 5 Oct 2026 14:10 IST — M5 Patch templates and validation — Claude Code
+- **Attempted:** `/milestone M5`: five templates, registry, renderer returning full file contents, plan
+  validation, `--inject bad-param`.
+- **Output:** `core/patches/{rightsize,schedule,graviton,storage_tier,time_shift}.py`; registry and
+  `validate_params` (keys ⊆ options, values ∈ allowed); renderer refuses `expiration`, `force_destroy`,
+  `prevent_destroy` and no-op renders; edits only the candidate's own file.
+- **Decision:** accepted (human approval requested with the commit).
+- **Errors found:** `tofu fmt` writes empty blocks as `filter {}` — the HCL writer would have emitted a
+  two-line empty block (caught while writing `storage_tier`, before the test run).
+- **Corrective steps:** empty blocks render as `name {}`.
+- **Evidence:** `tests/unit/test_patches.py`: every template's diff touches one file and at most two
+  existing lines; all six cases pass `fmt -check`, `validate`, `plan -refresh=false` offline in one
+  shared workspace; the injected bad image variable fails with a ≤4 KB stderr tail naming it.
 
 ---
 

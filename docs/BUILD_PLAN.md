@@ -109,7 +109,7 @@ marked `tofu`) with no network; ground truth has 10 entries with 3 traps.
 
 **Done when:** all golden values match; every `EmissionRecord` carries provenance.
 
-## M4 — Collector, policy, ranking  `[ ]`
+## M4 — Collector, policy, ranking  `[x]`
 
 - `tools/cur.py` (DuckDB over parquet), `tools/metrics.py`; `agents/collector.py` builds `Resource` +
   `Utilisation` (35-day window, `min_datapoints`, weekly activity mask).
@@ -121,7 +121,7 @@ marked `tofu`) with no network; ground truth has 10 entries with 3 traps.
 produces no expiration option, `orphaned-ebs` is an advisory, and the carbon order differs from the
 cost order.
 
-## M5 — Patch templates and validation  `[ ]`
+## M5 — Patch templates and validation  `[x]`
 
 - `core/patches/` with the five templates from INTERVENTIONS.md; registry; renderer returns full new
   file contents.
