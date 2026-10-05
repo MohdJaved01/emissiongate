@@ -223,6 +223,45 @@ the milestone. Entries are factual: what failed is recorded, not smoothed over.
 - **Evidence:** `ruff check` and `ruff format --check` clean; `pytest` 7 passed; `python -m emissiongate
   --help` lists estate, run, gate, score, sync-feedback, grid-snapshot, report; `agent-check` consistent.
 
+### 5 Oct 2026 14:20 IST — M1 Contracts, factors, ledger — Claude Code
+- **Attempted:** `/milestone M1`: `contracts.py` from DATA_CONTRACTS, factor loader with provenance,
+  append-only SQLite ledger.
+- **Output:** `contracts.py` (copied verbatim by script from the doc's code block; five optional
+  `Utilisation` fields added to both doc and code for schedule savings and the month-end trap);
+  `core/factors.py` (`instance`, `processor_watts` averaged, `region_g_per_kwh` tier `annual`, constants,
+  replication; `FactorNotFound` for unknown types, processors, regions and the `unknown` pseudo-region);
+  `core/ledger.py` (INSERT-only, triggers reject UPDATE/DELETE, monotonic `seq`, payloads stored by
+  SHA-256, scalar-only `detail`, injected clock, `LedgerWriteError` on failure).
+- **Decision:** accepted (human approval requested with the commit).
+- **Errors found:** the verbatim contracts contain `×` in a comment, which `ruff` RUF003 rejects — found
+  by `ruff check`. Methodology audit (separate subagent, below) found a latent hidden default
+  `raw.get("gpu_count", 0)` (P0 under core rules).
+- **Corrective steps:** `allowed-confusables` for `× − –` in `pyproject.toml` (keeps the copy verbatim);
+  `gpu_count` now required, missing → `FactorNotFound`.
+- **Evidence:** `tests/unit/test_factors.py` (all 7 estate instance types, unknown type/region raise),
+  `tests/unit/test_ledger.py` (UPDATE/DELETE rejected, closed DB write raises), `test_contracts.py`
+  (frozen, extra forbidden, LLM-facing models have no numeric fields).
+
+### 5 Oct 2026 14:45 IST — M3 Energy and emissions — Claude Code; review by methodology-auditor subagent
+- **Attempted:** `/milestone M3`, tests first: golden G1–G4, then `core/energy.py` and `core/grid.py`.
+- **Output:** `compute()` (per-vCPU and per-GPU watts, EG-simplification-1 memory, PUE),
+  `storage()` (SSD/HDD × replication × PUE), `kg_co2e`, `emission_record()` merging coefficient and grid
+  provenance; `core/grid.py` annual tier plus a strict snapshot parser for later time-shifting.
+- **Decision:** accepted (human approval requested with the commit).
+- **Errors found:** (1) two golden savings failed by 0.0006 — found by the tests. The doc's savings are
+  differences of the rounded before/after values (138.794 − 42.170 = 96.624), while the unrounded
+  difference is 96.6246. Code was right; the doc was ambiguous. (2) The methodology-auditor subagent
+  (cold review, read-only, recomputed G1–G7 from the raw factors file) found no formula drift, confirmed
+  reading (1) is fair (not a hidden change), and raised P1: emissions dropped the `annual`-tier
+  provenance; P2: `u_gpu` defaulted to 0 for GPU instances; snapshot slots not converted to UTC; loose
+  test tolerance; storage-class → medium mapping is hand-typed (declared, not vendored).
+- **Corrective steps:** METHODOLOGY §6 clarification paragraph (no formula changed; G2, G3, G6 named);
+  tests assert both the rounded-difference golden and the unrounded value at 3 dp; `emission_record()`
+  plus a test that provenance tiers are `{vendored, annual}`; `u_gpu` required for GPU instances; snapshot
+  parser converts to UTC, keeps the last 7 days, checks region and full slot coverage. Not fixed (P2,
+  recorded): storage-class mapping stays in code with a CCF citation; network kWh unused in v1.
+- **Evidence:** `tests/golden/test_golden_energy.py` — G1–G4 at 3 dp; `pytest` 48 passed.
+
 ---
 
 ## Totals (fill in at submission)

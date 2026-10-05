@@ -118,6 +118,11 @@ energy not measured" and SCI is incomplete.
 
 Computed from `factors/ccf_aws_f584c54.json` with the formulas above.
 
+Savings and deltas are differences of the published before/after values, each rounded to 3
+decimals. The unrounded difference can differ by up to 0.001 (G2 36.4384, G3 96.6246, G6 +59.1945 and
+−232.2165); reports publish the difference of the rounded values; tests check
+both (clarified 5 Oct 2026 in M3; no formula changed).
+
 **G1 — idle GPU inference instance.** `g5.2xlarge` (8 vCPU AMD EPYC 2nd Gen, 1× Nvidia A10G, 32 GiB),
 u_cpu 0.05, u_gpu 0.04, us-east-1, 8760 h.
 `it_watts 27.648`, `wall_watts 31.3805`, `kwh 274.893`, `kg_co2e 100.371`.

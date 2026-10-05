@@ -46,7 +46,7 @@ live grid data, the footprint numbers and polish. If time runs short, ship M0–
 
 ---
 
-## M0 — Scaffold  `[ ]`
+## M0 — Scaffold  `[x]`
 
 - `pyproject.toml` (given), `src/emissiongate/` package with the directories in CLAUDE.md, empty
   `__init__.py` files, `cli.py` with a typer app and stub commands that exit 0.
@@ -58,7 +58,7 @@ live grid data, the footprint numbers and polish. If time runs short, ship M0–
 **Done when:** `make setup lint test` passes on a clean clone; `python -m emissiongate --help` lists
 `estate run score sync-feedback grid-snapshot report`.
 
-## M1 — Contracts, factors, ledger  `[ ]`
+## M1 — Contracts, factors, ledger  `[x]`
 
 - `contracts.py` copied from `docs/DATA_CONTRACTS.md`.
 - `core/factors.py`: load `factors/ccf_aws_f584c54.json`; expose `processor_watts(names)` (averaged),
@@ -102,7 +102,7 @@ and `.env.example` reflects the outcome.
 estate; `tofu init -plugin-dir=.tofu-providers && tofu validate` passes on the generated `.estate/` (test
 marked `tofu`) with no network; ground truth has 10 entries with 3 traps.
 
-## M3 — Energy and emissions  `[ ]`
+## M3 — Energy and emissions  `[x]`
 
 - `core/energy.py` implementing METHODOLOGY §1–§2; `core/grid.py` annual tier only for now.
 - Golden tests G1–G4 to 3 decimal places.
