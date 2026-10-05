@@ -32,6 +32,7 @@ thresholds:
   rightsize_target_p95_max: 0.60     # projected p95 after rightsizing must stay under this
   schedule_max_active_share: 0.50    # schedule only if active less than half the week
   weekly_pattern_min_regularity: 0.8 # share of weeks matching the hour-of-week mask
+  schedule_min_mask_coverage: 0.95   # share of active hours inside the mask (no activity cut)
   min_saving_kg_co2e_yr: 5.0
   time_shift_allowed_window: "00:00-06:00"
 

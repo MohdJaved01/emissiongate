@@ -176,7 +176,7 @@ SPECS: list[Spec] = [
         {"Retention": "Regulatory", "Owner": "security", "Environment": "prod"},
         pattern="storage",
         params={"lifecycle": False},
-        storage_gb=40 * 1024,
+        storage_gb=40_000,
         storage_class="STANDARD",
     ),
 ]
@@ -404,7 +404,7 @@ def _monthly_kwh(spec: Spec, tel: dict, factors: Factors) -> dict[str, float]:
         month = t.strftime("%Y-%m")
         if spec.kind in ("ebs", "s3"):
             assert spec.storage_gb and spec.storage_class
-            tb = spec.storage_gb * spec.count / 1024
+            tb = spec.storage_gb * spec.count / 1000
             kwh = energy.storage(factors, tb, spec.storage_class, hours=1).kwh
         else:
             assert spec.instance_type
