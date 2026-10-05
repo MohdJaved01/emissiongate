@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EmissionGate run 20261005T091433Z-local-s42</title>
+<style>
+  :root { --fg:#1d2733; --muted:#5b6b7c; --line:#d9e1e8; --bg:#ffffff; --panel:#f5f8fa;
+          --good:#1f7a4d; --warn:#9a6a00; --bad:#b3261e; --accent:#0b6e75; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e3e9ee; --muted:#9aabb9; --line:#2f3b46; --bg:#12181e; --panel:#1a232b;
+            --good:#5cc08b; --warn:#e0b44c; --bad:#f2837a; --accent:#5cc6cc; } }
+  body { font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--fg);
+         background: var(--bg); margin: 0; padding: 24px 16px 64px; }
+  main { max-width: 1080px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 4px; } h2 { font-size: 19px; margin: 36px 0 8px; }
+  .sub { color: var(--muted); margin: 0 0 16px; }
+  .banner { background: var(--panel); border-left: 4px solid var(--accent); padding: 10px 14px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+  .tile b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .tile span { color: var(--muted); font-size: 13px; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  code { font-size: 13px; }
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 12px;
+         border: 1px solid var(--line); }
+  .ok { color: var(--good); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+  .muted { color: var(--muted); }
+  footer { margin-top: 40px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+<h1>EmissionGate run report</h1>
+<p class="sub">Run <code>20261005T091433Z-local-s42</code> · mode <b>local</b> · seed 42 ·
+  approved by <b>erjav</b> (Gate 1) · final state <b>DONE</b></p>
+<p class="banner"><b>All data is synthetic.</b> Figures are annual, location-based Scope 2 estimates
+  computed by the deterministic core from Cloud Carbon Footprint coefficients
+  (<code>f584c549ee35</code>); resource totals use grid tier <code>annual</code>,
+  and any other tier is named on the row that uses it. Nothing was applied:
+  fixes are delivered as pull-request drafts for a human to review. Local LLM: gpt-oss:20b@low (narrative), gpt-oss:20b@medium (decisions, repair) via Ollama. The model chooses among allowed options and writes prose; every number comes from the deterministic core.</p>
+
+<div class="tiles">
+  <div class="tile"><b>1,811.6</b><span>kgCO2e/yr in scope (10 resources)</span></div>
+  <div class="tile"><b>608.1</b><span>kgCO2e/yr in proposed fixes (4 PR drafts) — proposed, not merged</span></div>
+  <div class="tile"><b>100%</b><span>coverage (quantified / in scope)</span></div>
+  <div class="tile"><b>6</b><span>resources refused or advisory</span></div>
+<div class="tile"><b>0.005228</b><span>kWh used by this run (estimated)</span></div></div>
+
+<h2>Per-resource footprint</h2>
+<div class="scroll"><table>
+<tr><th>Resource</th><th>Shape</th><th>Region</th><th class="n">kWh/yr</th><th class="n">kgCO2e/yr</th><th class="n">g/kWh</th><th>Provenance</th><th class="n">Ledger</th></tr>
+<tr><td><code>compliance-logs</code></td>
+<td>40.0 TB STANDARD</td>
+<td>eu-west-2</td><td class="n">1,551.0</td><td class="n">473.1</td>
+<td class="n">305.0</td>
+<td><span class="tag">ccf@f584c54 · vendored</span> <span class="tag">ccf@f584c54 · annual</span> </td>
+<td class="n">#16</td></tr>
+<tr><td><code>gpu-inference</code></td>
+<td>4 × g5.2xlarge</td>
+<td>us-east-1</td><td class="n">1,099.6</td><td class="n">401.5</td>
+<td class="n">365.1</td>
+<td><span class="tag">ccf@f584c54 · vendored</span> <span class="tag">ccf@f584c54 · annual</span> </td>
+<td class="n">#19</td></tr>
+<tr><td><code>legacy-worker</code></td>
+<td>6 × m5.2xlarge</td>
+<td>eu-west-1</td><td class="n">1,290.5</td><td class="n">393.6</td>
+<td class="n">305.0</td>
+<td><span class="tag">ccf@f584c54 · vendored</span> <span class="tag">ccf@f584c54 · annual</span> </td>
+<td class="n">#20</td></tr>
+<tr><td><code>monthend-close</code></td>
+<td>3 × c5.4xlarge</td>
+<td>eu-west-1</td><td class="n">603.5</td><td class="n">184.1</td>
+<td class="n">305.0</td>
+<td><span class="tag">ccf@f584c54 · vendored</span> <span class="tag">ccf@f584c54 · annual</span> </td>
+<td class="n">#21</td></tr>
+<tr><td><code>reporting-db</code></td>
+<td>1 × db.r5.4xlarge</td>
+<td>us-east-1</td><td class="n">380.1</td><td class="n">138.8</td>
+<td class="n">365.1</td>
+<td><span class="tag">ccf@f584c54 · vendored</span> <span class="tag">ccf@f584c54 · annual</span> </td>
+<td class="n">#25</td></tr>
+<tr><td><code>dev-api</code></td>
+<td>12 × m5.large</td>
+<td>eu-west-2</td><td class="n">231.6</td><td class="n">70.6</td>
+<td class="n">305.0</td>
+<td><span class="tag">ccf@f584c54 · vendored</span> <span class="tag">ccf@f584c54 · annual</span> </td>
+<td class="n">#17</td></tr>
+<tr><td><code>prod-api</code></td>
+<td>4 × m7g.xlarge</td>
+<td>eu-west-1</td><td class="n">181.5</td><td class="n">55.4</td>
+<td class="n">305.0</td>
+<td><span class="tag">ccf@f584c54 · vendored</span> <span class="tag">ccf@f584c54 · annual</span> </td>
+<td class="n">#24</td></tr>
+<tr><td><code>orphaned-ebs</code></td>
+<td>4.0 TB gp3</td>
+<td>us-east-1</td><td class="n">95.4</td><td class="n">34.9</td>
+<td class="n">365.1</td>
+<td><span class="tag">ccf@f584c54 · vendored</span> <span class="tag">ccf@f584c54 · annual</span> </td>
+<td class="n">#23</td></tr>
+<tr><td><code>dr-standby</code></td>
+<td>2 × m5.2xlarge</td>
+<td>us-west-2</td><td class="n">108.1</td><td class="n">32.3</td>
+<td class="n">298.7</td>
+<td><span class="tag">ccf@f584c54 · vendored</span> <span class="tag">ccf@f584c54 · annual</span> </td>
+<td class="n">#18</td></tr>
+<tr><td><code>nightly-etl</code></td>
+<td>4 × c5.2xlarge</td>
+<td>eu-west-2</td><td class="n">90.0</td><td class="n">27.4</td>
+<td class="n">305.0</td>
+<td><span class="tag">ccf@f584c54 · vendored</span> <span class="tag">ccf@f584c54 · annual</span> </td>
+<td class="n">#22</td></tr>
+</table></div>
+
+<h2>Ranked by carbon, cost alongside</h2>
+<p class="muted">Every option the policy allowed and the core valued. Carbon rank decides the order; synthetic cost is shown, never used to rank (ADR-0010).</p>
+<div class="scroll"><table>
+<tr><th class="n">Carbon rank</th><th class="n">Cost rank</th><th>Option</th><th>Grid tier</th><th class="n">Ledger</th><th class="n">kgCO2e/yr saved</th><th class="n">kWh/yr saved</th><th class="n">USD/yr saved (synthetic)</th><th>Outcome</th></tr>
+<tr><td class="n">1</td><td class="n">1</td><td><code>gpu-inference:schedule</code></td><td>annual</td><td class="n">#31</td>
+<td class="n">258.1</td><td class="n">706.9</td><td class="n">27,301</td>
+<td>PR drafted</td></tr>
+<tr><td class="n">2</td><td class="n">6</td><td><code>legacy-worker:graviton</code></td><td>annual</td><td class="n">#32</td>
+<td class="n">218.6</td><td class="n">716.8</td><td class="n">3,027</td>
+<td>PR drafted</td></tr>
+<tr><td class="n">3</td><td class="n">2</td><td><code>reporting-db:rightsize</code></td><td>annual</td><td class="n">#34</td>
+<td class="n">96.6</td><td class="n">264.6</td><td class="n">13,140</td>
+<td>PR drafted</td></tr>
+<tr><td class="n">4</td><td class="n">5</td><td><code>dev-api:schedule</code></td><td>annual</td><td class="n">#28</td>
+<td class="n">34.7</td><td class="n">113.9</td><td class="n">7,088</td>
+<td>PR drafted</td></tr>
+<tr><td class="n">5</td><td class="n">4</td><td><code>gpu-inference:rightsize</code></td><td>annual</td><td class="n">#30</td>
+<td class="n">27.3</td><td class="n">74.8</td><td class="n">7,218</td>
+<td>alternative (smaller carbon saving)</td></tr>
+<tr><td class="n">6</td><td class="n">7</td><td><code>dev-api:graviton</code></td><td>annual</td><td class="n">#29</td>
+<td class="n">27.2</td><td class="n">89.4</td><td class="n">1,514</td>
+<td>alternative (smaller carbon saving)</td></tr>
+<tr><td class="n">7</td><td class="n">8</td><td><code>nightly-etl:time_shift</code></td><td>snapshot</td><td class="n">#33</td>
+<td class="n">0.0</td><td class="n">0.0</td><td class="n">0</td>
+<td>advisory: below carbon threshold</td></tr>
+<tr><td class="n">8</td><td class="n">3</td><td><code>compliance-logs:storage_tier</code></td><td>annual</td><td class="n">#27</td>
+<td class="n">0.0</td><td class="n">0.0</td><td class="n">9,120</td>
+<td>advisory: below carbon threshold</td></tr>
+</table></div>
+
+<h2>Refused, advisory and no action</h2>
+<div class="scroll"><table>
+<tr><th>Resource</th><th>Kind</th><th>Reason</th><th>Blocked by</th></tr>
+<tr><td><code>compliance-logs</code></td><td><span class="tag">below_threshold</span></td><td>storage_tier: carbon saving below min_saving_kg_co2e_yr (5.0); synthetic cost saving 9,120 USD/yr (0.0 kgCO2e/yr)</td><td><code>tag:Retention=Regulatory (restricted to storage_tier)</code><br></td></tr>
+<tr><td><code>dr-standby</code></td><td><span class="tag">guardrail</span></td><td>guardrail: protected resource, no change is proposed (fail closed)</td><td><code>tag:Role=DR</code><br><code>missing-tag:Owner</code><br></td></tr>
+<tr><td><code>nightly-etl</code></td><td><span class="tag">below_threshold</span></td><td>time_shift: carbon saving below min_saving_kg_co2e_yr (5.0); synthetic cost saving 0 USD/yr (0.0 kgCO2e/yr)</td><td></td></tr>
+<tr><td><code>orphaned-ebs</code></td><td><span class="tag">decommission</span></td><td>unattached for 60 days; deleting data is a human decision (34.9 kgCO2e/yr)</td><td></td></tr>
+<tr><td><code>monthend-close</code></td><td><span class="tag">no action</span></td><td>rightsize: no smaller size keeps projected p95 under the limit; schedule: not allowed for Environment=prod; graviton: already arm64 or no arm64 equivalent in the factors file</td><td></td></tr>
+<tr><td><code>prod-api</code></td><td><span class="tag">no action</span></td><td>rightsize: no smaller size keeps projected p95 under the limit; schedule: not allowed for Environment=prod; graviton: already arm64 or no arm64 equivalent in the factors file</td><td></td></tr>
+</table></div>
+
+<h2>Pull-request drafts</h2>
+<div class="scroll"><table>
+<tr><th>Draft</th><th>Template</th><th class="n">kgCO2e/yr</th><th>Plan</th><th>Decision</th><th>Status</th></tr>
+<tr><td><a href="prs/gpu-inference.md">Schedule gpu-inference to its weekly activity window (−258.1 kgCO2e/yr)</a></td><td>schedule</td><td class="n">−258.1</td>
+<td>1 attempt(s)</td><td>llm</td>
+<td class="ok">drafted</td></tr>
+<tr><td><a href="prs/legacy-worker.md">Move legacy-worker to Graviton m7g.2xlarge (−218.6 kgCO2e/yr)</a></td><td>graviton</td><td class="n">−218.6</td>
+<td>1 attempt(s)</td><td>llm</td>
+<td class="ok">drafted</td></tr>
+<tr><td><a href="prs/reporting-db.md">Rightsize reporting-db: db.r5.4xlarge to db.r5.xlarge (−96.6 kgCO2e/yr)</a></td><td>rightsize</td><td class="n">−96.6</td>
+<td>1 attempt(s)</td><td>llm</td>
+<td class="ok">drafted</td></tr>
+<tr><td><a href="prs/dev-api.md">Schedule dev-api to its weekly activity window (−34.7 kgCO2e/yr)</a></td><td>schedule</td><td class="n">−34.7</td>
+<td>1 attempt(s)</td><td>llm</td>
+<td class="ok">drafted</td></tr>
+</table></div>
+
+<h2>The agent's own footprint (SCI, ISO/IEC 21031)</h2>
+<div class="scroll"><table>
+<tr><th>E — energy of this run</th><td class="n">0.005228 kWh</td><td><b>estimated</b> — codecarbon offline, tracking_mode=machine; CPU via windows_emi (hardware counters, 55% of energy); RAM modelled by CodeCarbon (45%)</td></tr>
+<tr><th>I — grid intensity</th><td class="n">713.4 g/kWh</td><td>CodeCarbon offline grid intensity for country IND</td></tr>
+<tr><th>M — embodied (device)</th><td class="n">not declared</td><td>EG_DEVICE_EMBODIED_KG_CO2E unset — never defaulted</td></tr>
+<tr><th>SCI per run (R = one estate scan)</th><td class="n">0.003730 kgCO2e</td><td>3.73 gCO2e, operational only</td></tr>
+<tr><th>Payback ratio (proposed)</th><td class="n">163,030×</td><td>kgCO2e/yr in proposed fixes ÷ kgCO2e of this run — proposed, not merged</td></tr>
+<tr><th>Payback ratio (merged)</th><td class="n">n/a</td><td>no PR has been merged by a human yet</td></tr>
+</table></div>
+<p class="muted">LLM: 8 calls, 3405 prompt + 3219 completion tokens, 0 fallbacks · models large=<code>gpt-oss:20b@medium</code> small=<code>gpt-oss:20b@low</code> .
+  Tool calls: 26 · ledger events: 67 · repair attempts: 0 · first-attempt plan success: 100% · OpenTofu v1.13.0.</p>
+
+<h2>Reconciliation</h2>
+<p class="muted">Bottom-up annual figures ÷ 12 compared with CCFT-shaped monthly totals. <b>In this synthetic project the CCFT totals are generated with a seeded bias</b> to exercise the code path; they are not an independent check (METHODOLOGY §4). With real data, CCFT Data Exports give the independent, audited total.</p>
+<div class="scroll"><table>
+<tr><th>Region</th><th class="n">Bottom-up kgCO2e/month</th><th class="n">CCFT-shaped kgCO2e/month</th><th class="n">Variance</th></tr>
+<tr><td>eu-west-1</td><td class="n">52.8</td><td class="n">30.0</td><td class="n">−43.1%</td></tr>
+<tr><td>eu-west-2</td><td class="n">47.6</td><td class="n">28.8</td><td class="n">−39.6%</td></tr>
+<tr><td>us-east-1</td><td class="n">47.9</td><td class="n">29.1</td><td class="n">−39.3%</td></tr>
+<tr><td>us-west-2</td><td class="n">2.7</td><td class="n">1.5</td><td class="n">−45.8%</td></tr>
+</table></div>
+
+<footer>
+  EmissionGate · coefficients: Cloud Carbon Footprint (Apache-2.0) commit <code>f584c549ee358d5980d36513267d007ecd3ee716</code> ·
+  started 2026-10-05 09:14:33 UTC, finished 09:21:38 UTC ·
+  ledger: <code>ledger.sqlite</code> (append-only) · manifest: <code>manifest.json</code>.
+Grid data © National Energy System Operator, Carbon Intensity API, CC BY 4.0.</footer>
+</main>
+</body>
+</html>

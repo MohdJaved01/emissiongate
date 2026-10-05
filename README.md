@@ -7,7 +7,13 @@ Humans decide; the agent cannot apply, merge or delete anything.
 
 > **Demo video (4 min, agent running):** TODO-VIDEO-LINK
 >
-> **Live gate example:** TODO-GATE-PR-LINK (a PR adding 2 × g5.2xlarge, with the gate's comment)
+> **Live gate example:** [emissiongate-demo-estate PR #1](https://github.com/MohdJaved01/emissiongate-demo-estate/pull/1) (a PR adding 2 × g5.2xlarge, with the gate's comment). Its red ❌ `gate` check is the
+> intended result: +683.5 kgCO2e/yr is above the 100 kg threshold, so the check fails until a human
+> comments a reason and adds `eg/carbon-accepted` (or commits the suggestion). Merging stays a human
+> decision.
+>
+> **Sample output without installing anything:** [docs/sample-run/](docs/sample-run/) — the HTML run
+> report and the four PR drafts from today's local-LLM run (synthetic).
 >
 > All data is **synthetic** or public. No customer, confidential or personal data is used.
 > *Prompt, Plan, Preserve* hackathon — Green IT (Green AI / carbon accounting).
@@ -58,8 +64,22 @@ needed.
 ```bash
 git clone https://github.com/MohdJaved01/emissiongate && cd emissiongate
 make setup        # virtualenv, dependencies, .env from .env.example
-make providers    # downloads the AWS provider once into .tofu-providers/ — the only networked step
+make providers    # AWS provider once into .tofu-providers/ — after this, runs need no network
 ```
+
+**Native Windows (how the submission was built, ADR-0017)** — no WSL or `make` needed, PowerShell:
+
+```powershell
+winget install astral-sh.uv OpenTofu.Tofu   # optional: winget install Ollama.Ollama
+uv venv --python 3.12 .venv; uv pip install --python .venv\Scripts\python.exe -e ".[dev]"
+cd tofu; tofu providers mirror ..\.tofu-providers; cd ..
+.venv\Scripts\emissiongate estate --seed 42
+.venv\Scripts\emissiongate run --mode offline --seed 42 --approve
+.venv\Scripts\emissiongate score
+.venv\Scripts\emissiongate run --mode local --seed 42 --approve   # with Ollama + gpt-oss:20b
+```
+
+GitHub Actions on Ubuntu runs the real `make` targets on every push (`.github/workflows/ci.yml`).
 
 ## Run
 
@@ -79,19 +99,25 @@ make demo           # same pipeline; the model chooses parameters and writes PR 
 estate:
 
 ```bash
+make estate      # telemetry in data/ gives existing resources their observed utilisation
 git clone https://github.com/MohdJaved01/emissiongate-demo-estate ../estate
 .venv/bin/emissiongate gate --estate-dir ../estate --base main --head origin/demo/add-gpu-fleet
+# Windows: .venv\Scripts\emissiongate gate --estate-dir ..\estate --base main --head origin/demo/add-gpu-fleet
 ```
 
+It needs the provider mirror from `make providers`.
+
 It prints the comment the PR would get. In the estate repo, `.github/workflows/emissiongate-gate.yml`
-runs the same command on every pull request and posts the comment.
+runs the same command on every pull request and posts the comment. The estate repository's contents
+are reproducible from this one: `python scripts/build_estate_repo.py OUT_DIR` (the workflow source is in
+[`estate-repo/`](estate-repo/)).
 
 ### What you will see
 
 | Output | Content |
 |---|---|
-| `runs/<id>/report.html` | per-resource kgCO2e with provenance, carbon vs cost ranking, refused and advisory items with reasons, PR drafts, the agent's own energy and kgCO2e |
-| `runs/<id>/prs/*.md` | each PR body as it would appear on GitHub |
+| `runs/<id>/report.html` ([sample](docs/sample-run/report.html)) | per-resource kgCO2e with provenance, carbon vs cost ranking, refused and advisory items with reasons, PR drafts, the agent's own energy and kgCO2e |
+| `runs/<id>/prs/*.md` ([sample](docs/sample-run/prs/gpu-inference.md)) | each PR body as it would appear on GitHub |
 | `runs/<id>/ledger.sqlite` | every state transition, tool call and LLM call with tokens and timings |
 | gate comment | net kgCO2e/yr per changed resource, assumption range, suggestions, check status |
 
@@ -127,19 +153,35 @@ Worked examples from the published coefficients. The test suite reproduces each 
 | Schedule the idle staging GPU fleet (4 × g5.2xlarge) to 60 h/week | 401.5 → 143.4 | **−258.1** |
 | Move 6 × m5.2xlarge workers to Graviton (m7g) | 393.6 → 175.0 | **−218.6** |
 | Rightsize the reporting database (db.r5.4xlarge → db.r5.xlarge) | 138.8 → 42.2 | **−96.6** |
+| Schedule the always-on dev API (12 × m5.large) to weekday 09–19 | 70.6 → 35.9 | **−34.7** |
 | Gate: PR adds 2 × g5.2xlarge, 24×7, no history (assumed 50% load, range 10–90%) | 0 → 683.5 (263.1–1,103.9) | **+683.5**, acknowledgement required |
-| Gate: PR scales m5.2xlarge 6 → 10 | 393.6 → 452.8 | **+59.2**, warning; suggestion m7g × 10: **−232.2** |
+| Gate: PR scales m5.2xlarge 6 → 10; same work spread over more instances (u 0.60 → 0.36) | 393.6 → 452.8 | **+59.2**, warning; suggestion m7g × 10: **−232.2** |
 
-From today's run on seed 42 (filled at submission from `make demo-offline score` and `make demo`):
+The four sweep rows are the four PR drafts of today's run; their published deltas add to 608.0, and the
+run's own total (608.1) is the sum of the unrounded values.
 
-| Metric | Offline | Local LLM |
+From today's runs on seed 42 (run ids `20261005T090230Z-offline-s42` and `20261005T091433Z-local-s42`;
+the local run's report and PRs are in [docs/sample-run/](docs/sample-run/)), Windows laptop, Intel Core
+Ultra 9, CPU inference:
+
+| Metric | Offline | Local LLM (`gpt-oss:20b`) |
 |---|---|---|
-| Precision / recall vs ground truth | TODO | TODO |
-| Trap violations | TODO | TODO |
-| kgCO2e/yr in proposed fixes | TODO | TODO |
-| Agent energy per run (kWh, measured or estimated) | TODO | TODO |
-| Agent kgCO2e per run | TODO | TODO |
-| LLM calls / tokens | 0 / 0 | TODO |
+| Precision / recall vs ground truth | 1.00 / 0.80 | 1.00 / 0.80 |
+| Trap violations | 0 | 0 |
+| PR drafts (all plans passed first attempt) | 4 | 4 |
+| kgCO2e/yr in proposed fixes (proposed, not merged) | 608.1 | 608.1 |
+| Agent energy per run (CodeCarbon) | 0.000360 kWh, **estimated** | 0.005228 kWh, **estimated** |
+| Agent gCO2e per run (I = 713 g/kWh, CodeCarbon, India) | 0.26 g | 3.73 g |
+| Payback ratio (proposed fixes ÷ run) | ≈ 2.4 million × | ≈ 163,000 × |
+| LLM calls / tokens / fallbacks | 0 / 0 / 0 | 8 / 6,624 / 0 (8 of 8 schema-valid first try) |
+
+Recall is 0.80 because the fifth "act" resource, the nightly ETL, saves only 0.035 kgCO2e/yr by
+time-shifting on the committed London snapshot — below the 5 kg threshold, so it is reported as an
+advisory instead of a PR. Energy is labelled **estimated**: CodeCarbon reads CPU energy from hardware
+counters on this laptop (Windows EMI) but models RAM power (45–62% of the total). The model added about
+0.005 kWh per run and chose the same parameters as the rules; on this estate its value is the
+narrative, not different decisions. These runs were launched by the coding agent on the build laptop,
+not in a sandbox; a human-run `make demo` produces the same report for independent figures.
 
 Per-resource figures are tens to hundreds of kgCO2e per year. That is what the coefficients say, and the
 project reports it as it is rather than extrapolating.
@@ -151,7 +193,7 @@ This was built in a hackathon. The design covers more than the code does; this t
 | Capability | Milestone | Status |
 |---|---|---|
 | Synthetic estate with traps and ground truth | M2 | built — byte-identical per seed, plans offline |
-| Energy and emissions model, golden values G1–G7 | M3 | built — G1–G7 tested to 3 decimals |
+| Energy and emissions model, golden values G1–G7 | M3, M6.5 | built — G1–G4 (M3) and G5–G7 (M6.5) tested to 3 decimals |
 | Guardrails, carbon ranking, five fix templates, `tofu plan` validation | M4–M5 | built |
 | Sweep end to end, offline, with PR drafts, report and scoring | M6 | built (`--resume` not built) |
 | Agent's own energy and kgCO2e in the report (CodeCarbon) | M10 (part) | built — labelled estimated (RAM is modelled) |
@@ -172,7 +214,8 @@ This was built in a hackathon. The design covers more than the code does; this t
   works, not that the agent generalises to real estates.
 - `tofu plan` runs against empty state: it proves the HCL is valid, not what AWS would change.
 - AWS only; time-shifting uses UK grid data for eu-west-2 only, from a snapshot.
-- The agent's own energy on a laptop without power counters is an estimate, and the report says so.
+- The agent's own energy is labelled **estimated**: CodeCarbon reads CPU counters where the machine has
+  them (Windows EMI here) but models RAM power, and hosted CI runners expose no counters at all.
 - See the status table for designed-but-not-built capabilities.
 
 ## Agent sustainability choices
@@ -180,8 +223,9 @@ This was built in a hackathon. The design covers more than the code does; this t
 - Every number comes from deterministic code; the model only chooses among allowed options and writes
   prose, so it runs rarely and briefly.
 - One local open-weight model, OpenAI's `gpt-oss-20b` (Apache-2.0, about 3.6B active parameters per token),
-  with low reasoning by default — its energy is inside the measurement, not assumed.
-- No LLM in CI: the gate is arithmetic over a plan and finishes in seconds.
+  with low reasoning for narrative and medium for patch decisions — its energy is inside the
+  measurement, not assumed.
+- No LLM in CI: the gate is two offline plans plus arithmetic (about 30 s of tofu on a laptop).
 - Fixed templates instead of generated code; hard budgets on calls, tokens, repairs, time and PRs.
 - An offline mode with the same pipeline, so the LLM's marginal value and marginal energy can be compared.
 - Nothing deployed: one process that runs and exits; providers come from a local mirror, not re-downloaded.
@@ -189,12 +233,15 @@ This was built in a hackathon. The design covers more than the code does; this t
 ## Repository map
 
 ```
-src/emissiongate/   cli, orchestrator, agents, core (deterministic), llm, tools, report
+src/emissiongate/   cli, orchestrator, agents, core (deterministic), llm, tools, report, estate generator
 factors/            vendored Cloud Carbon Footprint coefficients
-fixtures/           grid snapshot, LLM test cases
+fixtures/grid/      committed UK grid-intensity snapshot (CC BY 4.0)
 policy.yaml         guardrails, thresholds, gate settings
-docs/               design document, pitch deck, augmentation log, methodology, ADRs
-tests/              unit, golden values, ground truth
+tofu/versions.tf    provider constraint for the mirror and the estate
+estate-repo/        workflow, README and .gitignore of the demo estate repository
+scripts/            estate-repo builder, agent-file checker
+docs/               design document, pitch deck, augmentation log, methodology, ADRs, sample run
+tests/              unit, golden values, ground truth (sweep and gate scenarios)
 ```
 
 More: [Architecture](docs/ARCHITECTURE.md) · [Methodology](docs/METHODOLOGY.md) · [PR gate](docs/GATE.md) ·

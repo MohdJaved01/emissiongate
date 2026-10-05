@@ -7,7 +7,7 @@
 ## Context
 
 ADR-0012 made Codex the primary development tool. Codex licences were provided late in the hackathon
-window (on <DATE LICENCES ARRIVED>). Codex built and verified an M0 scaffold on a Windows work laptop on
+window (on 1 Oct 2026). Codex built and verified an M0 scaffold on a Windows work laptop on
 4–5 October, but that machine had no Linux toolchain for the Makefile and 16 GB of RAM, too little for
 the local `gpt-oss-20b` model (ADR-0013 amendment). The submission was due on 5 October.
 

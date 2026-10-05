@@ -17,16 +17,19 @@ claimed until their evidence column is filled.
 
 - No `tofu apply/destroy/import/state`, `terraform`, AWS CLI or live-mode demo — forbidden by command rules.
 - Every published number comes from deterministic code; LLM output may not contain figures (tested).
-- Network is off in the coding agent's sandbox; a human runs installs, provider downloads and pushes.
+- Networked steps (installs, provider mirror, model pull, the grid snapshot) and every commit and push
+  ran only after the human's explicit approval in the session; on build day Claude Code ran them once
+  approved (ADR-0017).
 - A human approves each milestone before it is ticked in [BUILD_PLAN.md](BUILD_PLAN.md).
-- Each milestone is checked by a separate reviewer agent before a human approves it.
+- Reviewer subagents in separate, read-only contexts checked M3 (methodology), M6 and M6.5
+  (invariants), as BUILD_PLAN requires, and read the README as a judge before submission.
 
 ---
 
 ## Codex across the lifecycle
 
 **Why Codex's role is limited.** Codex licences were provided late in the hackathon window
-(on <DATE LICENCES ARRIVED>). Codex built and checked an M0 scaffold on a Windows work laptop on
+(on 1 Oct 2026). Codex built and checked an M0 scaffold on a Windows work laptop on
 4–5 October. With the submission due on 5 October, that machine lacking a Linux toolchain and having too
 little memory for the local model, the submission was built from scratch with Claude Code
 ([ADR-0016](adr/0016-claude-code-builds-submission.md)). The repository stays Codex-ready: the
@@ -49,7 +52,8 @@ instructions, sandbox, rules, skills and reviewers below are what a Codex sessio
    until a clean clone passes CI, instead of declaring success on a Windows-only run.
 5. **Exposed a platform risk early:** Codex's environment report showed the Makefile could not run on
    native Windows. That led to two decisions: Linux CI is the acceptance referee, and development moved to
-   a Linux toolchain (WSL2) so the commands judges run are the commands that were tested.
+   a Linux toolchain (WSL2) so the commands judges run are the commands that were tested. (On build day
+   WSL2 was not available; ADR-0017 records the native-Windows build with Linux CI as the referee.)
 
 ### How the repository is built around Codex
 
@@ -68,19 +72,13 @@ The project's working rules live where Codex reads them, so every Codex session 
 This configuration was drafted with Claude and checked against the Codex documentation; six defects
 found in that check are logged under 30 Sep below.
 
-### Optional Codex reviews on build day (only if time allows)
+### Codex reviews on build day
 
-If Codex is available on the work laptop, it reviews Claude Code's milestones read-only with the same
-prompts as the Claude Code reviewer subagents, so a second model checks the first. **Delete any row that
-is not run before submitting.**
-
-| # | Task | Status | Evidence |
-|---|---|---|---|
-| R1 | Invariant review of M1–M3 (contracts, factors, ledger, energy) | planned | |
-| R2 | Methodology audit of `core/energy.py` and golden tests against METHODOLOGY.md | planned | |
-| R3 | Invariant review of M4–M6 (policy, templates, orchestrator, report) | planned | |
-| R4 | Invariant review of M6.5 gate (invariant 14: informs, never pushes or merges) | planned | |
-| R5 | Judge simulation: read the README cold, list every missing or ambiguous instruction | planned | |
+None were run on build day; Codex was not used. Independent review of Claude Code's milestones
+was done by Claude Code reviewer subagents in separate, read-only contexts driven by the same prompts
+(`docs/review/methodology-auditor.md`, `docs/review/invariant-reviewer.md`): one methodology audit
+after M3, invariant reviews after M6 and M6.5, and a judge-style README read before submission. A
+second model (Codex) would be a stronger cross-check; that is listed as not done.
 
 ---
 
@@ -94,9 +92,9 @@ is not run before submitting.**
 | Developer tooling | config, rules, skills, reviewers it runs under | drafted that configuration from Codex docs | approved |
 | Implementation | M0 scaffold prototype (work laptop, not in this repo) | all code in this repository | approved each milestone |
 | Testing | compile, architecture, capability, literal and secret scans; 32 tests | golden values G1–G7 | ran networked setup |
-| Review | cold invariant review of M0; optional reviews R1–R4 | reviewer subagents per milestone; design reviews | decided on each finding |
-| Documentation | optional README check (R5) | README, design doc, pitch deck, demo script, this log per milestone | edited and approved |
-| Environment | dependencies, OpenTofu, provider mirror on Windows | WSL2 and sandbox setup guidance | moved to Linux toolchain |
+| Review | cold invariant review of M0 (prototype) | reviewer subagents after M3, M6, M6.5; judge-style README read; design reviews | decided on each finding |
+| Documentation | — | README, design doc, pitch deck, demo script, this log per milestone | edited and approved |
+| Environment | dependencies, OpenTofu, provider mirror on Windows | native-Windows bring-up on build day (ADR-0017) | moved the repo out of OneDrive; approved each install |
 | Demo | — | demo script | recorded the video |
 
 ---
@@ -334,7 +332,7 @@ the milestone. Entries are factual: what failed is recorded, not smoothed over.
   (2) rich swallowed `[tag:Role=DR, …]` as markup, hiding guardrail reasons — found by reading the output;
   (3) ranking table rounded savings directly (34.8) while the PR title published the difference of rounded
   values (−34.7) — found by reading the output; (4) CodeCarbon on this laptop measures CPU via Windows EMI
-  counters but **models RAM at a fixed 20 W**, ~80% of the total — labelling the run "measured" would have
+  counters but **models RAM at a fixed 20 W** — ~80% of the total in a 4-second probe, 45–62% in full runs — labelling the run "measured" would have
   overstated it. (5) Invariant-reviewer subagent (cold, read-only): no P0; **P1** published PR figures
   (from re-valuation) had no ledger event and time-shift rows would mislabel their grid tier (inv. 4);
   **P1** LLM narrative/risks would reach the PR body without the numeric-claim scan (inv. 1); **P1** a
@@ -348,8 +346,10 @@ the milestone. Entries are factual: what failed is recorded, not smoothed over.
   event; missing price raises → "not quantified"; `>=` ceilings; ledger for `tofu version`, metrics miss,
   `tofu init` failure; unknown plan attributes → not quantified with reason; acceptance requires a `User`
   comment posted after the `labeled` event.
-- **Evidence:** `make demo-offline` equivalent on Windows: 44 s, `DONE`, 4 PR drafts, all plans pass first
-  attempt, coverage 100%, LLM calls 0; agent energy 0.000345 kWh (estimated), 0.25 gCO2e/run.
+- **Evidence:** `make demo-offline` equivalent on Windows (first offline run `20261005T084721Z-offline-s42`):
+  44 s, `DONE`, 4 PR drafts, all plans pass first attempt, coverage 100%, LLM calls 0; agent energy
+  0.000345 kWh (estimated), 0.25 gCO2e/run. The README quotes the later run `20261005T090230Z-offline-s42`
+  (with the grid snapshot): 0.000360 kWh, 0.26 g.
   `score`: precision 1.00, recall 0.80 (FN: nightly-etl time_shift — no grid snapshot), 0 trap violations.
   `tests/ground_truth/test_offline_pipeline.py` (thresholds, ledgered transitions, PR numbers from core,
   `--inject bad-param` repaired on attempt 2), `tests/unit/test_claims.py`.
@@ -425,13 +425,38 @@ the milestone. Entries are factual: what failed is recorded, not smoothed over.
   connection error, disallowed values → rule, numeric-claim narrative → template, ledger has tokens and
   no thinking text.
 
+### 5 Oct 2026 16:09 IST — Live gate PR, results and judge-style README review — Claude Code; review by a reviewer subagent
+- **Attempted:** open the gate demo PR on the estate repo (human-approved), fill the README results from
+  real runs, then have a fresh subagent read the README cold as a judge and check it against the repo.
+- **Output:** [emissiongate-demo-estate PR #1](https://github.com/MohdJaved01/emissiongate-demo-estate/pull/1):
+  the workflow posted the sticky comment (❌ acknowledgement required, +683.5 kgCO2e/yr, 263.1–1,103.9
+  assumed, schedule suggestion −439.4 validated) and failed the check as designed; CI green on Ubuntu for
+  every push. `docs/sample-run/` (the local run's report, PR drafts and manifest, synthetic).
+- **Decision:** the acknowledgement label is left to the human (invariant 14); Claude Code does not add it.
+- **Errors found by the judge-review subagent:** README sweep table showed 3 of the 4 PRs, so 608.1 did not
+  add up on the page; energy figures differed between README and this log (two different runs, unnamed);
+  a g/kg unit slip; "only networked step", "G1–G7 in M3", "laptop without power counters", "low reasoning
+  by default" and "LLM test cases" were inaccurate; the intended red ❌ on PR #1 was unexplained; no sample
+  output without installing; this log kept orphan R1–R5 rows (left by an earlier edit of mine), a stale
+  "every milestone reviewed" rule and a WSL2 statement contradicting ADR-0017; AGENT_DESIGN listed unbuilt
+  LLM call sites and "measured energy"; the pitch deck (slide 7) says "573 kgCO2e/yr avoided".
+- **Corrective steps:** all README, log and AGENT_DESIGN items fixed. **Not fixed: the pitch deck** — the
+  .pptx/.pdf need the human to edit slide 7 to "608 kgCO2e/yr proposed (not merged) · +684 flagged at
+  review" and re-export.
+- **Evidence:** this commit; `gh pr view 1 --repo MohdJaved01/emissiongate-demo-estate --comments`.
+
 ---
 
 ## Totals (fill in at submission)
 
 | | Count |
 |---|---|
-| Milestones attempted / accepted | — |
-| Codex reviews run / findings / findings fixed | — / — / — |
-| AI outputs accepted as-is / modified / rejected | — / — / — |
-| Errors found by AI self-check / by cross-tool review / by tests / by human review | — / — / — / — |
+| Milestones attempted / accepted (build day) | 10 / 10 — M0, M1, M2, M3, M4, M5, M6 (+M10/M11 parts), M6.5, M7 (minimal), M9 (part) |
+| Codex reviews run / findings / findings fixed | 0 / 0 / 0 (not run on build day) |
+| Reviewer-subagent reviews run / findings / findings fixed | 4 / 26 code findings (1 P0, 12 P1, 13 P2) + 17 README/doc findings / 23 code (every P0 and P1; 10 of 13 P2) + 16 doc (deck left to the human) |
+| AI outputs accepted as-is / modified / rejected (human decision per commit) | 10 / 0 / 0 — the human approved every milestone commit; Claude Code modified its own output after reviews before asking |
+| Errors found by AI self-check / by reviewer subagents / by tests / by human review | 18 / 26 / 1 / 0 on build day (earlier human-review findings are in the 4–5 Oct entry) |
+
+P2 findings left open, recorded: the storage-class → SSD/HDD mapping is hand-typed in `core/energy.py`
+(with a CCF citation) rather than vendored; network energy is not modelled; the gate's suggestion
+selection lives in `orchestrator/gate.py` rather than `core/`.

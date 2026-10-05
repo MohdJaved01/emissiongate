@@ -26,7 +26,7 @@ and actionable **at merge time** instead of in a monthly report.
 | kgCO2e per year avoided by proposed and merged fixes | deterministic model, [METHODOLOGY.md](METHODOLOGY.md), golden values tested to 3 decimals |
 | Correctness on a seeded estate | precision and recall against ground truth; **zero** trap violations |
 | Increases caught before merge | gate status per PR (`pass_with_warning`, `ack_required`) |
-| The agent's own footprint | measured energy, kgCO2e per run (SCI, ISO/IEC 21031) and payback ratio |
+| The agent's own footprint | energy from CodeCarbon, labelled measured or estimated (estimated on the build laptop: RAM is modelled), kgCO2e per run (SCI, ISO/IEC 21031) and payback ratio |
 
 Non-goals: applying changes, market-based accounting, embodied carbon of cloud hardware, multi-cloud.
 
@@ -64,7 +64,7 @@ regulatory log bucket) that look like waste but must be refused. See [SYNTHETIC_
 |---|---|---|---|
 | DuckDB | query the billing parquet | Collector | read-only |
 | OpenTofu `fmt`, `validate`, `plan`, `show -json` | prove a fix is valid HCL; read a PR's plan | Validator, gate | `-refresh=false`, dummy credentials, providers only from a vetted local mirror — **never touches AWS** |
-| Local LLM via Ollama (`gpt-oss:20b`, Apache-2.0) | scan planning, ambiguous classification, choosing a template's parameters, repairing a failed plan, PR narrative | Planner, Strategist, Validator | structured JSON only, schema-validated; never produces a number |
+| Local LLM via Ollama (`gpt-oss:20b`, Apache-2.0) | built: choosing a template's parameters, repairing a failed plan, PR narrative · designed, not built: scan planning, ambiguous classification | Planner, Strategist, Validator | structured JSON only, schema-validated; never produces a number |
 | GitHub REST (httpx) | post the gate comment and check; open PRs in live mode | Reporter, Validator | gate: comment + job result only; never pushes or merges |
 | CodeCarbon | measure the agent's own energy around the whole run | orchestrator | local measurement; labelled `measured` or `estimated` |
 | SQLite ledger | append-only record of every step, tool call and LLM call | everything | `INSERT` only; a trigger rejects updates and deletes |

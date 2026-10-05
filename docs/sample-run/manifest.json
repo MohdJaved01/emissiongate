@@ -1,0 +1,45 @@
+{
+ "run_id": "20261005T091433Z-local-s42",
+ "mode": "local",
+ "seed": 42,
+ "started_at": "2026-10-05T09:14:33.431392Z",
+ "finished_at": "2026-10-05T09:21:38.464698Z",
+ "final_state": "DONE",
+ "approved_by": "erjav",
+ "coverage": 1.0,
+ "counts": {
+  "in_scope": 10,
+  "quantified": 10,
+  "candidates": 4,
+  "drafted": 4,
+  "opened": 0,
+  "escalated": 0,
+  "skipped": 0
+ },
+ "llm": {
+  "calls": 8,
+  "prompt_tokens": 3405,
+  "completion_tokens": 3219,
+  "fallbacks": 0
+ },
+ "repair_attempts": 0,
+ "first_attempt_plan_success": 1.0,
+ "factors_version": "f584c549ee358d5980d36513267d007ecd3ee716",
+ "models": {
+  "small": "gpt-oss:20b@low",
+  "large": "gpt-oss:20b@medium"
+ },
+ "tofu_version": "OpenTofu v1.13.0",
+ "sci": {
+  "energy_kwh": 0.005228247036666228,
+  "energy_label": "estimated",
+  "tracking_method": "codecarbon offline, tracking_mode=machine; CPU via windows_emi (hardware counters, 55% of energy); RAM modelled by CodeCarbon (45%)",
+  "grid_g_per_kwh": 713.441,
+  "grid_source": "CodeCarbon offline grid intensity for country IND",
+  "embodied_kg_co2e": null,
+  "kg_co2e_per_run": 0.0037300457940861904,
+  "kg_co2e_per_accepted_recommendation": null,
+  "payback_ratio_merged": null,
+  "payback_ratio_proposed": 163029.88898789734
+ }
+}
