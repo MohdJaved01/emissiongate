@@ -333,6 +333,8 @@ def _cron_minutes(cron: str) -> tuple[int, int, str]:
 
 
 def _expand_days(spec: str) -> list[int]:
+    if spec == "*":
+        return list(range(7))
     out: list[int] = []
     for part in spec.split(","):
         if "-" in part:
