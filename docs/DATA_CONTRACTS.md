@@ -257,6 +257,8 @@ class Projection(Frozen):
     kg_co2e_yr_after: float  # central value
     kg_co2e_yr_after_low: float | None = None  # assumed basis only
     kg_co2e_yr_after_high: float | None = None
+    kg_co2e_yr_before_low: float | None = None  # assumed basis only (same band as after)
+    kg_co2e_yr_before_high: float | None = None
     kwh_yr_delta: float
     usd_synthetic_yr_delta: float
     provenance: list[Provenance]
@@ -271,6 +273,10 @@ class GateSuggestion(Frozen):
     kg_co2e_yr_delta_vs_head: float
     plan_ok: bool
     diff: str  # unified diff against head, shown in the comment
+    basis: UtilisationBasis = "observed"
+    kg_co2e_yr_delta_low: float | None = None  # assumed basis only
+    kg_co2e_yr_delta_high: float | None = None
+    ledger_event_id: int | None = None
 
 
 class GateResult(Frozen):
@@ -287,6 +293,7 @@ class GateResult(Frozen):
     accepted_by: str | None = None
     accepted_reason: str | None = None
     ledger_run_id: str
+    projection_event_id: int | None = None  # ledger event holding every projection
 
 
 class GatePrediction(Frozen):
@@ -357,6 +364,10 @@ class Score(Frozen):
 ```
 
 ## Validation rules outside the type system
+
+- 5 Oct 2026 (M6.5 invariant review): `Projection` gained `kg_co2e_yr_before_low/high` so a removal or
+  a change to a resource without telemetry is published as a range on both sides; `GateSuggestion`
+  gained `basis`, a delta range and its ledger event id; `GateResult` gained `projection_event_id`.
 
 - `Utilisation` gained five optional fields on 5 Oct 2026 (M4): `running_hour_share`,
   `cpu_avg_off_mask`, `gpu_avg_off_mask`, `weekly_regularity`, `mask_coverage`. `schedule` savings use the

@@ -49,8 +49,9 @@ class Tracker:
 
     def start(self) -> None:
         try:
-            logging.getLogger("codecarbon").setLevel(logging.ERROR)
             from codecarbon import OfflineEmissionsTracker
+
+            logging.getLogger("codecarbon").setLevel(logging.ERROR)
 
             self._tracker = OfflineEmissionsTracker(
                 country_iso_code=self.country_iso,

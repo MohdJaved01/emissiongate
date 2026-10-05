@@ -50,5 +50,6 @@ gate:                                  # PR gate thresholds (docs/GATE.md). Net 
   assumed_utilisation_band: [0.10, 0.90]
   assumed_gpu_utilisation: 0.50        # no published default; stated as an assumption
   max_suggestions: 3
+  assumed_schedule: ["0 8 * * MON-FRI", "0 20 * * MON-FRI"]   # schedule suggestion for resources without telemetry; labelled assumed
   watch_paths: ["**/*.tf"]
 

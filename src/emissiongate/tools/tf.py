@@ -20,6 +20,8 @@ from types import TracebackType
 from emissiongate.contracts import PlanResult
 
 ALLOWED_SUBCOMMANDS = frozenset({"init", "fmt", "validate", "plan", "show", "version"})
+SECRET_PREFIXES = ("AWS_", "GITHUB_", "GH_", "ACTIONS_", "ARM_", "GOOGLE_", "AZURE_")
+SECRET_WORDS = ("TOKEN", "SECRET", "PASSWORD", "CREDENTIAL", "API_KEY", "ACCESS_KEY")
 STDERR_TAIL_BYTES = 4096
 SKIP_NAMES = {".terraform", ".terraform.lock.hcl", "terraform.tfstate", "plan.bin", ".git"}
 
@@ -77,9 +79,11 @@ def _env(data_dir: Path | None = None) -> dict[str, str]:
     if data_dir is not None:
         data_dir.mkdir(parents=True, exist_ok=True)
         env["TF_DATA_DIR"] = str(data_dir)
-    # Never inherit cloud credentials: plans use the estate's dummy provider settings only.
+    # Never hand credentials or tokens to tofu: plans use the estate's dummy provider settings, and
+    # untrusted PR HCL must not be able to read a token from the environment (GATE §6).
     for key in list(env):
-        if key.startswith("AWS_"):
+        upper = key.upper()
+        if upper.startswith(SECRET_PREFIXES) or any(w in upper for w in SECRET_WORDS):
             env.pop(key)
     return env
 
@@ -162,6 +166,7 @@ class Workspace:
             "init",
             "-input=false",
             "-no-color",
+            "-backend=false",
             f"-plugin-dir={self.cfg.plugin_dir}",
         )
         if result.exit_code != 0:

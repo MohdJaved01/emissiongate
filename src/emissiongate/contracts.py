@@ -250,6 +250,8 @@ class Projection(Frozen):
     kg_co2e_yr_after: float  # central value
     kg_co2e_yr_after_low: float | None = None  # assumed basis only
     kg_co2e_yr_after_high: float | None = None
+    kg_co2e_yr_before_low: float | None = None  # assumed basis only (same band as after)
+    kg_co2e_yr_before_high: float | None = None
     kwh_yr_delta: float
     usd_synthetic_yr_delta: float
     provenance: list[Provenance]
@@ -264,6 +266,10 @@ class GateSuggestion(Frozen):
     kg_co2e_yr_delta_vs_head: float
     plan_ok: bool
     diff: str  # unified diff against head, shown in the comment
+    basis: UtilisationBasis = "observed"
+    kg_co2e_yr_delta_low: float | None = None  # assumed basis only
+    kg_co2e_yr_delta_high: float | None = None
+    ledger_event_id: int | None = None
 
 
 class GateResult(Frozen):
@@ -280,6 +286,7 @@ class GateResult(Frozen):
     accepted_by: str | None = None
     accepted_reason: str | None = None
     ledger_run_id: str
+    projection_event_id: int | None = None  # ledger event holding every projection
 
 
 class GatePrediction(Frozen):

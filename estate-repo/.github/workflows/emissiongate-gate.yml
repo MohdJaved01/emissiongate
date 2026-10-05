@@ -1,0 +1,87 @@
+# EmissionGate PR gate (docs/GATE.md, ADR-0015) for the synthetic estate repository.
+# Deterministic, no LLM, no secrets beyond the ephemeral GITHUB_TOKEN Actions provides.
+# It comments and sets this job's result; it never pushes to the PR branch, approves or merges.
+name: emissiongate-gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    paths: ["**/*.tf"]
+
+permissions:
+  contents: read
+  pull-requests: write   # post / update the one sticky comment
+  issues: read           # read the eg/carbon-accepted label event and the reason comment
+
+concurrency:
+  group: emissiongate-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the infrastructure repo (base and head SHAs are needed)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false   # untrusted PR HCL must not find a token in .git/config
+
+      - name: Check out EmissionGate
+        uses: actions/checkout@v4
+        with:
+          repository: MohdJaved01/emissiongate
+          ref: main
+          path: .emissiongate
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: .emissiongate/pyproject.toml
+
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+
+      - name: Restore the vetted provider mirror
+        id: mirror
+        uses: actions/cache@v4
+        with:
+          path: .emissiongate/.tofu-providers
+          key: tofu-providers-${{ runner.os }}-${{ hashFiles('.emissiongate/tofu/versions.tf') }}
+
+      - name: Mirror providers (cache miss only; the only networked tofu step, ADR-0014)
+        if: steps.mirror.outputs.cache-hit != 'true'
+        working-directory: .emissiongate/tofu
+        run: tofu providers mirror "$GITHUB_WORKSPACE/.emissiongate/.tofu-providers"
+
+      - name: Install EmissionGate
+        run: pip install -e .emissiongate
+
+      - name: Synthetic telemetry for observed utilisation (no Terraform written)
+        run: emissiongate estate --telemetry-only --seed 42 --out data
+
+      - name: Carbon gate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EG_TOFU_PLUGIN_DIR: .emissiongate/.tofu-providers
+          EG_COUNTRY_ISO: USA
+        run: >-
+          emissiongate gate --estate-dir .
+          --base ${{ github.event.pull_request.base.sha }}
+          --head ${{ github.event.pull_request.head.sha }}
+          --pr ${{ github.event.pull_request.number }}
+          --repo ${{ github.repository }}
+          --post
+
+      - name: Keep the prediction and ledger (calibration loop, GATE §7)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emissiongate-gate-${{ github.event.pull_request.number }}
+          path: runs/
+          retention-days: 90
+          if-no-files-found: ignore

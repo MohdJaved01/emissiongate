@@ -1,0 +1,11 @@
+# generated or local-only
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+plan.bin
+data/
+runs/
+.eg-cache/
+.emissiongate/
+.tofu-providers/

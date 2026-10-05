@@ -61,7 +61,8 @@ def _approver() -> str:
 
 
 def _f(value: float, digits: int = 1) -> str:
-    return f"{value:,.{digits}f}"
+    text = f"{value:,.{digits}f}"
+    return text.lstrip("-") if float(text.replace(",", "")) == 0 else text
 
 
 def _progress(kind: str, data: dict) -> None:
@@ -255,14 +256,73 @@ def score(
         raise typer.Exit(1)
 
 
+@app.command()
+def gate(
+    estate_dir: Path = typer.Option(..., help="Git checkout of the infrastructure repo."),
+    base: str = typer.Option("main", help="Base ref (the PR's target)."),
+    head: str = typer.Option("HEAD", help="Head ref (the PR's commit)."),
+    pr: int = typer.Option(0, help="Pull request number (with --post)."),
+    repo: str = typer.Option("", help="owner/name (with --post)."),
+    post: bool = typer.Option(False, "--post", help="Upsert the PR comment; exit 1 if ack needed."),
+) -> None:
+    """Check a pull request's carbon delta before merge (GATE.md). Informs; humans decide."""
+    from emissiongate.orchestrator.gate import Gate
+    from emissiongate.tools.github import GitHub
+
+    settings = load_settings()
+    github = None
+    if post:
+        if not pr or not repo:
+            console.print("--post needs --pr and --repo")
+            raise typer.Exit(2)
+        github = GitHub(os.environ.get("GITHUB_TOKEN", ""), repo)
+    result = Gate(settings, estate_dir.resolve(), base, head, pr, repo, github).run()
+    r = result.result
+    if result.comment is None:
+        console.print("No carbon-relevant change: no comment.")
+    else:
+        console.print(result.comment, markup=False, highlight=False)
+    console.print(
+        f"[bold]gate status: {r.status}[/bold] net {r.net_kg_co2e_yr:+.1f} kgCO2e/yr "
+        f"(range {r.net_kg_co2e_yr_low:+.1f} to {r.net_kg_co2e_yr_high:+.1f}); "
+        f"prediction: {result.run_dir / 'prediction.json'}"
+    )
+    if result.url:
+        console.print(f"comment: {result.url}")
+    raise typer.Exit(result.exit_code)
+
+
 @app.command("sync-feedback")
 def sync_feedback() -> None:
     """Read closed PR labels and gate predictions (live mode; designed, not built)."""
 
 
 @app.command("grid-snapshot")
-def grid_snapshot() -> None:
-    """Fetch a UK grid-intensity snapshot (network; human-run)."""
+def grid_snapshot(
+    region: str = typer.Option("eu-west-2", help="Only eu-west-2 (London) has a live source."),
+    out: Path = typer.Option(Path("fixtures/grid"), help="Directory for the snapshot JSON."),
+) -> None:
+    """Fetch a UK grid-intensity snapshot (network; human-run, then committed)."""
+    from datetime import UTC, datetime
+
+    from emissiongate.core.grid import parse_snapshot
+    from emissiongate.tools.grid_uk import snapshot
+
+    if region != "eu-west-2":
+        console.print("Only eu-west-2 (London) has a live/snapshot source (ADR-0007).")
+        raise typer.Exit(2)
+    now = datetime.now(UTC)
+    doc = snapshot(now)
+    parsed = parse_snapshot(doc)  # validates region, UTC slots and coverage
+    means = parsed.mean_by_slot_of_day()
+    out.mkdir(parents=True, exist_ok=True)
+    path = out / f"uk_london_{now.date().isoformat()}.json"
+    path.write_text(json.dumps(doc, indent=1) + "\n", encoding="utf-8", newline="\n")
+    console.print(
+        f"Snapshot {path}: {len(parsed.history())} history slots, "
+        f"{len(doc['forecast'])} forecast slots; 7-day mean by slot "
+        f"{min(means.values()):.0f}-{max(means.values()):.0f} g/kWh. {doc['attribution']}"
+    )
 
 
 @app.command()
