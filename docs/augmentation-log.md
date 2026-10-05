@@ -322,6 +322,38 @@ the milestone. Entries are factual: what failed is recorded, not smoothed over.
   existing lines; all six cases pass `fmt -check`, `validate`, `plan -refresh=false` offline in one
   shared workspace; the injected bad image variable fails with a ≤4 KB stderr tail naming it.
 
+### 5 Oct 2026 14:30 IST — M6 Orchestrator and offline mode end to end (+ M10 CodeCarbon, M11 score) — Claude Code; review by invariant-reviewer subagent
+- **Attempted:** `/milestone M6`: run- and candidate-level state machine, checkpoints, budget ceilings,
+  validator with bounded repair, PR body template, HTML run report, `score`, CodeCarbon block.
+- **Output:** `orchestrator/{machine,budget,checkpoint,measure}.py`, `agents/{validator,decider}.py`,
+  `core/{sci,scoring,claims}.py`, `report/render.py` + `templates/{pr_body.md.j2,report.html.j2}`, CLI
+  `run` (Gate 1 prompt unless `--approve`, records the approver) and `score`.
+- **Decision:** accepted (human approval requested with the commit). `--resume` not built (BUILD_PLAN
+  "if behind: skip --resume"); `checkpoint.json` is written before every transition.
+- **Errors found:** (1) Windows console (cp1252) crashed on the `−` sign — found on the first run;
+  (2) rich swallowed `[tag:Role=DR, …]` as markup, hiding guardrail reasons — found by reading the output;
+  (3) ranking table rounded savings directly (34.8) while the PR title published the difference of rounded
+  values (−34.7) — found by reading the output; (4) CodeCarbon on this laptop measures CPU via Windows EMI
+  counters but **models RAM at a fixed 20 W**, ~80% of the total — labelling the run "measured" would have
+  overstated it. (5) Invariant-reviewer subagent (cold, read-only): no P0; **P1** published PR figures
+  (from re-valuation) had no ledger event and time-shift rows would mislabel their grid tier (inv. 4);
+  **P1** LLM narrative/risks would reach the PR body without the numeric-claim scan (inv. 1); **P1** a
+  missing synthetic price became a silent zero cost change (core hidden-default rule); **P2** LLM ceilings
+  could never stop the run (inv. 9); three tool calls unledgered (inv. 8); gate diff collector defaulted
+  unknown plan attributes (inv. 5); acceptance reason could predate the label or come from a bot (inv. 14).
+- **Corrective steps:** UTF-8 stdout; markup escaped; one published-delta rule everywhere; energy label
+  `estimated` unless every non-zero component is hardware-measured, with the measured CPU share stated;
+  ledger event per valuation (strategist) and per published valuation (validator), cited in the PR body,
+  tier shown per ranking row; `core/claims.py` scan on narrative and risks → template fallback + `fallback`
+  event; missing price raises → "not quantified"; `>=` ceilings; ledger for `tofu version`, metrics miss,
+  `tofu init` failure; unknown plan attributes → not quantified with reason; acceptance requires a `User`
+  comment posted after the `labeled` event.
+- **Evidence:** `make demo-offline` equivalent on Windows: 44 s, `DONE`, 4 PR drafts, all plans pass first
+  attempt, coverage 100%, LLM calls 0; agent energy 0.000345 kWh (estimated), 0.25 gCO2e/run.
+  `score`: precision 1.00, recall 0.80 (FN: nightly-etl time_shift — no grid snapshot), 0 trap violations.
+  `tests/ground_truth/test_offline_pipeline.py` (thresholds, ledgered transitions, PR numbers from core,
+  `--inject bad-param` repaired on attempt 2), `tests/unit/test_claims.py`.
+
 ---
 
 ## Totals (fill in at submission)

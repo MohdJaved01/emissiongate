@@ -1,0 +1,48 @@
+## {{ title }}
+
+> **Synthetic estate — all data is synthetic.** Drafted by EmissionGate (`{{ mode }}` run `{{ run_id }}`).
+> Nothing has been applied: EmissionGate cannot apply, merge or delete. A human decides.
+
+| | Before | After | Change |
+|---|---:|---:|---:|
+| **kgCO2e / year** | {{ v.kg_co2e_before_yr | kg }} | {{ v.kg_co2e_after_yr | kg }} | **{{ published_delta(v.kg_co2e_before_yr, v.kg_co2e_after_yr) | signed }}** |
+| kWh / year | | | {{ (0 - v.kwh_saved_yr) | signed }} |
+| Cost / year (synthetic USD) | | | {{ (0 - v.usd_synthetic_saved_yr) | signed(0) }} |
+
+**What changes.** {{ change }}
+
+**Why.** {{ narrative }}
+
+**Evidence** ({{ util.window_days }}-day window, {{ util.datapoints }} hourly datapoints)
+{% if util.cpu_avg is not none %}
+- CPU average {{ util.cpu_avg | pct }}, p95 {{ util.cpu_p95 | pct }}{% if util.gpu_avg is not none %}; GPU average {{ util.gpu_avg | pct }}{% endif %}
+
+{% endif %}
+{% if util.active_hour_share is not none %}
+- Active {{ util.active_hour_share | pct }} of hours; weekly regularity {{ util.weekly_regularity | pct }}; activity inside the weekly mask {{ util.mask_coverage | pct }}
+{% endif %}
+- Resource: `{{ resource.tf_address }}` in `{{ resource.tf_file }}`, {{ resource.region }}{% if resource.instance_type %}, {{ resource.count }} × {{ resource.instance_type }}{% endif %}
+
+- Tags: {% for k, val in resource.tags | dictsort %}`{{ k }}={{ val }}`{% if not loop.last %}, {% endif %}{% endfor %}
+
+
+**Assumptions and risks** (confidence: {{ v.confidence }})
+{% for note in v.notes %}
+- {{ note }}
+{% endfor %}
+{% for risk in risks %}
+- {{ risk }}
+{% endfor %}
+
+**Validation.** `tofu fmt -check`, `tofu validate` and `tofu plan -refresh=false` passed on attempt {{ attempts }} (offline, providers from the local mirror, dummy credentials — plans never contact AWS).
+
+**Provenance**
+{% for p in v.provenance %}
+- `{{ p.source }}` version `{{ p.version[:12] }}`, tier `{{ p.tier }}`
+{% endfor %}
+- Ledger events: quantified #{{ record.ledger_event_id }}, valued #{{ valued_event }}, validated {% for e in event_ids %}#{{ e }}{% if not loop.last %}, {% endif %}{% endfor %} (`runs/{{ run_id }}/ledger.sqlite`)
+
+```diff
+{{ diff }}```
+
+<sub>Figures come from EmissionGate's deterministic core (docs/METHODOLOGY.md, Cloud Carbon Footprint coefficients at commit f584c54). The "Why" paragraph is prose only{% if narrative_source == "llm" %} (written by a local open-weight model; numbers are never taken from it){% endif %}. Annual, location-based Scope 2 estimates, not meter readings.</sub>

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EmissionGate run {{ m.run_id }}</title>
+<style>
+  :root { --fg:#1d2733; --muted:#5b6b7c; --line:#d9e1e8; --bg:#ffffff; --panel:#f5f8fa;
+          --good:#1f7a4d; --warn:#9a6a00; --bad:#b3261e; --accent:#0b6e75; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e3e9ee; --muted:#9aabb9; --line:#2f3b46; --bg:#12181e; --panel:#1a232b;
+            --good:#5cc08b; --warn:#e0b44c; --bad:#f2837a; --accent:#5cc6cc; } }
+  body { font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--fg);
+         background: var(--bg); margin: 0; padding: 24px 16px 64px; }
+  main { max-width: 1080px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 4px; } h2 { font-size: 19px; margin: 36px 0 8px; }
+  .sub { color: var(--muted); margin: 0 0 16px; }
+  .banner { background: var(--panel); border-left: 4px solid var(--accent); padding: 10px 14px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+  .tile b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .tile span { color: var(--muted); font-size: 13px; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  code { font-size: 13px; }
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 12px;
+         border: 1px solid var(--line); }
+  .ok { color: var(--good); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+  .muted { color: var(--muted); }
+  footer { margin-top: 40px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+<h1>EmissionGate run report</h1>
+<p class="sub">Run <code>{{ m.run_id }}</code> · mode <b>{{ m.mode }}</b> · seed {{ m.seed }} ·
+  approved by <b>{{ m.approved_by }}</b> (Gate 1) · final state <b>{{ m.final_state }}</b></p>
+<p class="banner"><b>All data is synthetic.</b> Figures are annual, location-based Scope 2 estimates
+  computed by the deterministic core from Cloud Carbon Footprint coefficients
+  (<code>{{ m.factors_version[:12] }}</code>); resource totals use grid tier <code>annual</code>,
+  and any other tier is named on the row that uses it. Nothing was applied:
+  fixes are delivered as pull-request drafts for a human to review.{% if llm_note %} {{ llm_note }}{% endif %}</p>
+
+<div class="tiles">
+  <div class="tile"><b>{{ totals.estate_kg | kg }}</b><span>kgCO2e/yr in scope ({{ records | length }} resources)</span></div>
+  <div class="tile"><b>{{ totals.proposed_kg | kg }}</b><span>kgCO2e/yr in proposed fixes ({{ drafted }} PR drafts) — proposed, not merged</span></div>
+  <div class="tile"><b>{{ m.coverage | pct }}</b><span>coverage (quantified / in scope)</span></div>
+  <div class="tile"><b>{{ refused }}</b><span>resources refused or advisory</span></div>
+  {% if m.sci %}<div class="tile"><b>{{ "%.6f" | format(m.sci.energy_kwh) }}</b><span>kWh used by this run ({{ m.sci.energy_label }})</span></div>{% endif %}
+</div>
+
+<h2>Per-resource footprint</h2>
+<div class="scroll"><table>
+<tr><th>Resource</th><th>Shape</th><th>Region</th><th class="n">kWh/yr</th><th class="n">kgCO2e/yr</th><th class="n">g/kWh</th><th>Provenance</th><th class="n">Ledger</th></tr>
+{% for r, rec in records %}
+<tr><td><code>{{ r.resource_id }}</code></td>
+<td>{% if r.instance_type %}{{ r.count }} × {{ r.instance_type }}{% else %}{{ "%.1f" | format(r.storage_tb) }} TB {{ r.storage_class }}{% endif %}</td>
+<td>{{ r.region }}</td><td class="n">{{ rec.kwh_yr | kg }}</td><td class="n">{{ rec.kg_co2e_yr | kg }}</td>
+<td class="n">{{ "%.1f" | format(rec.g_per_kwh) }}</td>
+<td>{% for p in rec.provenance %}<span class="tag">{{ p.source }} · {{ p.tier }}</span> {% endfor %}</td>
+<td class="n">#{{ rec.ledger_event_id }}</td></tr>
+{% endfor %}
+</table></div>
+
+<h2>Ranked by carbon, cost alongside</h2>
+<p class="muted">Every option the policy allowed and the core valued. Carbon rank decides the order; synthetic cost is shown, never used to rank (ADR-0010).</p>
+<div class="scroll"><table>
+<tr><th class="n">Carbon rank</th><th class="n">Cost rank</th><th>Option</th><th>Grid tier</th><th class="n">Ledger</th><th class="n">kgCO2e/yr saved</th><th class="n">kWh/yr saved</th><th class="n">USD/yr saved (synthetic)</th><th>Outcome</th></tr>
+{% for row in ranking %}
+<tr><td class="n">{{ row.rank_carbon }}</td><td class="n">{{ row.rank_cost }}</td><td><code>{{ row.cid }}</code></td><td>{{ row.tiers }}</td><td class="n">#{{ row.event }}</td>
+<td class="n">{{ (0 - published_delta(row.v.kg_co2e_before_yr, row.v.kg_co2e_after_yr)) | kg }}</td><td class="n">{{ row.v.kwh_saved_yr | kg }}</td><td class="n">{{ row.v.usd_synthetic_saved_yr | usd }}</td>
+<td>{{ row.outcome }}</td></tr>
+{% endfor %}
+</table></div>
+
+<h2>Refused, advisory and no action</h2>
+<div class="scroll"><table>
+<tr><th>Resource</th><th>Kind</th><th>Reason</th><th>Blocked by</th></tr>
+{% for a in advisories %}
+<tr><td><code>{{ a.resource_id }}</code></td><td><span class="tag">{{ a.kind }}</span></td><td>{{ a.reason }}{% if a.kg_co2e_saved_yr is not none %} ({{ a.kg_co2e_saved_yr | kg }} kgCO2e/yr){% endif %}</td><td>{% for b in a.blocked_by %}<code>{{ b }}</code><br>{% endfor %}</td></tr>
+{% endfor %}
+{% for rid, reasons in no_action | dictsort %}
+<tr><td><code>{{ rid }}</code></td><td><span class="tag">no action</span></td><td>{{ reasons | join("; ") }}</td><td></td></tr>
+{% endfor %}
+</table></div>
+
+<h2>Pull-request drafts</h2>
+<div class="scroll"><table>
+<tr><th>Draft</th><th>Template</th><th class="n">kgCO2e/yr</th><th>Plan</th><th>Decision</th><th>Status</th></tr>
+{% for d in drafts %}
+<tr><td><a href="prs/{{ d.file }}">{{ d.title }}</a></td><td>{{ d.template }}</td><td class="n">{{ d.delta | signed }}</td>
+<td>{{ d.attempts }} attempt(s){% if d.repaired %} <span class="warn">repaired</span>{% endif %}</td><td>{{ d.decided_by }}</td>
+<td class="{{ 'ok' if d.status == 'drafted' else 'bad' }}">{{ d.status }}</td></tr>
+{% else %}
+<tr><td colspan="6" class="muted">No drafts.</td></tr>
+{% endfor %}
+</table></div>
+
+<h2>The agent's own footprint (SCI, ISO/IEC 21031)</h2>
+{% if m.sci %}
+<div class="scroll"><table>
+<tr><th>E — energy of this run</th><td class="n">{{ "%.6f" | format(m.sci.energy_kwh) }} kWh</td><td><b>{{ m.sci.energy_label }}</b> — {{ m.sci.tracking_method }}</td></tr>
+<tr><th>I — grid intensity</th><td class="n">{{ "%.1f" | format(m.sci.grid_g_per_kwh) }} g/kWh</td><td>{{ m.sci.grid_source }}</td></tr>
+<tr><th>M — embodied (device)</th><td class="n">{% if m.sci.embodied_kg_co2e is none %}not declared{% else %}{{ "%.6f" | format(m.sci.embodied_kg_co2e) }} kg{% endif %}</td><td>{% if m.sci.embodied_kg_co2e is none %}EG_DEVICE_EMBODIED_KG_CO2E unset — never defaulted{% else %}amortised over device lifespan{% endif %}</td></tr>
+<tr><th>SCI per run (R = one estate scan)</th><td class="n">{{ "%.6f" | format(m.sci.kg_co2e_per_run) }} kgCO2e</td><td>{{ "%.2f" | format(m.sci.kg_co2e_per_run * 1000) }} gCO2e{% if m.sci.embodied_kg_co2e is none %}, operational only{% endif %}</td></tr>
+<tr><th>Payback ratio (proposed)</th><td class="n">{% if m.sci.payback_ratio_proposed %}{{ "{:,.0f}".format(m.sci.payback_ratio_proposed) }}×{% else %}n/a{% endif %}</td><td>kgCO2e/yr in proposed fixes ÷ kgCO2e of this run — proposed, not merged</td></tr>
+<tr><th>Payback ratio (merged)</th><td class="n">{% if m.sci.payback_ratio_merged %}{{ "{:,.0f}".format(m.sci.payback_ratio_merged) }}×{% else %}n/a{% endif %}</td><td>no PR has been merged by a human yet</td></tr>
+</table></div>
+{% else %}
+<p class="warn">Energy was not measured for this run (CodeCarbon unavailable); no SCI figure is published.</p>
+{% endif %}
+<p class="muted">LLM: {{ m.llm.calls }} calls, {{ m.llm.prompt_tokens }} prompt + {{ m.llm.completion_tokens }} completion tokens, {{ m.llm.fallbacks }} fallbacks{% if m.models %} · models {% for k, val in m.models | dictsort %}{{ k }}=<code>{{ val }}</code> {% endfor %}{% endif %}.
+  Tool calls: {{ ledger.tool_calls }} · ledger events: {{ ledger.events }} · repair attempts: {{ m.repair_attempts }} · first-attempt plan success: {{ m.first_attempt_plan_success | pct }}{% if m.tofu_version %} · {{ m.tofu_version }}{% endif %}.</p>
+
+<h2>Reconciliation</h2>
+<p class="muted">Bottom-up annual figures ÷ 12 compared with CCFT-shaped monthly totals. <b>In this synthetic project the CCFT totals are generated with a seeded bias</b> to exercise the code path; they are not an independent check (METHODOLOGY §4). With real data, CCFT Data Exports give the independent, audited total.</p>
+<div class="scroll"><table>
+<tr><th>Region</th><th class="n">Bottom-up kgCO2e/month</th><th class="n">CCFT-shaped kgCO2e/month</th><th class="n">Variance</th></tr>
+{% for row in reconciliation %}
+<tr><td>{{ row.region }}</td><td class="n">{{ row.bottom_up | kg }}</td><td class="n">{{ row.ccft | kg }}</td><td class="n">{{ row.variance | signed }}%</td></tr>
+{% endfor %}
+</table></div>
+
+<footer>
+  EmissionGate · coefficients: Cloud Carbon Footprint (Apache-2.0) commit <code>{{ m.factors_version }}</code> ·
+  started {{ m.started_at.strftime("%Y-%m-%d %H:%M:%S UTC") }}{% if m.finished_at %}, finished {{ m.finished_at.strftime("%H:%M:%S UTC") }}{% endif %} ·
+  ledger: <code>ledger.sqlite</code> (append-only) · manifest: <code>manifest.json</code>.
+  {% if grid_attribution %}Grid data © National Energy System Operator, Carbon Intensity API, CC BY 4.0.{% endif %}
+</footer>
+</main>
+</body>
+</html>

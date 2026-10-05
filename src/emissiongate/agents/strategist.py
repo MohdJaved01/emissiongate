@@ -23,6 +23,7 @@ class Strategy:
     verdicts: dict[str, Verdict] = field(default_factory=dict)
     no_action: dict[str, list[str]] = field(default_factory=dict)
     facts: dict[str, iv.ResourceFacts] = field(default_factory=dict)
+    valuation_events: dict[str, int] = field(default_factory=dict)
 
 
 Option = tuple[list[ParamOption], dict[str, str], iv.Valuation]
@@ -175,6 +176,7 @@ def strategise(
             opts, params, value = got
             cid = key(value)
             s.valuations[cid] = value
+            s.valuation_events[cid] = ledger_valuation(ctx, value, "strategist")
             options[cid] = (opts, params)
             if value.kg_co2e_saved_yr < th["min_saving_kg_co2e_yr"]:
                 s.advisories.append(
@@ -241,6 +243,34 @@ def strategise(
         },
     )
     return s
+
+
+def ledger_valuation(ctx: RunContext, value: iv.Valuation, agent: str) -> int:
+    """Every published saving has a ledger event with its inputs and provenance (invariant 4)."""
+    event = ctx.ledger.append(
+        state=ctx.state,
+        kind="decision",
+        agent=agent,
+        payload={
+            "valuation": {
+                "resource_id": value.resource_id,
+                "intervention": value.intervention,
+                "params": value.params,
+                "kwh_saved_yr": value.kwh_saved_yr,
+                "kg_co2e_saved_yr": value.kg_co2e_saved_yr,
+                "usd_synthetic_saved_yr": value.usd_synthetic_saved_yr,
+                "kg_co2e_before_yr": value.kg_co2e_before_yr,
+                "kg_co2e_after_yr": value.kg_co2e_after_yr,
+            },
+            "provenance": [p.model_dump(mode="json") for p in value.provenance],
+        },
+        detail={
+            "candidate_id": f"{value.resource_id}:{value.intervention}",
+            "kg_co2e_saved_yr": value.kg_co2e_saved_yr,
+            "tiers": ",".join(sorted({p.tier for p in value.provenance})),
+        },
+    )
+    return event.seq
 
 
 def rule_decision(candidate: Candidate) -> PatchDecision:

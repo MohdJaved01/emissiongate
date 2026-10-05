@@ -133,7 +133,7 @@ cost order.
 **Done when:** each template renders against the seed-42 estate and passes fmt/validate/plan
 (`tofu`-marked tests); a deliberately bad parameter fails plan with a readable stderr tail.
 
-## M6 — Orchestrator and offline mode end to end  `[ ]`  ← first demo-able state
+## M6 — Orchestrator and offline mode end to end  `[x]` (`--resume` not built)  ← first demo-able state
 
 - `orchestrator/machine.py` run-level + candidate-level machines (ARCHITECTURE §3–4),
   `checkpoint.py` (write before transition), `budget.py` (ceilings from policy.yaml).

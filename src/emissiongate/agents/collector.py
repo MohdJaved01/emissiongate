@@ -90,6 +90,13 @@ def collect(ctx: RunContext) -> tuple[list[ResourceFacts], list[tuple[str, str]]
         tel = metrics.load(ctx.data_dir / "metrics", row.resource_id)
         if tel is None:
             skipped.append((row.resource_id, "no metrics series"))
+            ctx.ledger.append(
+                state=ctx.state,
+                kind="tool_call",
+                agent="collector",
+                tool="metrics.load",
+                detail={"resource_id": row.resource_id, "found": False},
+            )
             continue
         is_storage = ref.kind in ("ebs", "s3")
         meta = dict(tel.get("meta") or {})

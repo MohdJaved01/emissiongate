@@ -63,3 +63,4 @@ markers = [
   "slow: full pipeline runs",
 ]
 addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning:codecarbon.*"]
