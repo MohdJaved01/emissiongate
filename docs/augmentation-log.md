@@ -556,6 +556,21 @@ the milestone. Entries are factual: what failed is recorded, not smoothed over.
   slide 10's roadmap lists the same items.
 - **Evidence:** this commit.
 
+### 6 Oct 2026 20:26 IST — Demo video and PR #1 acknowledgement — human; README by Claude Code
+- **Done by the human:**
+  - Recorded the demo video.
+  - On PR #1, commented a reason and added `eg/carbon-accepted`, as invariant 14 requires. The gate
+    re-ran and passed; its comment now reads "✅ increase accepted by a human".
+  - Claude Code wrote the reason text on request and did not post it or add the label.
+- **Claude Code:**
+  - Put the video link in the README.
+  - Updated the README and USING_THE_GATE, which still described PR #1's check as red.
+- **Error found (by Claude Code):** an anonymous request to the video link returned HTTP 403, so the
+  link may open only for signed-in members of the hosting organisation. Raised with the human before
+  submission.
+- **Evidence:** this commit; `gh pr checks 1 --repo MohdJaved01/emissiongate-demo-estate` shows `gate`
+  pass.
+
 ---
 
 ## Totals (fill in at submission)

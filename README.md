@@ -5,12 +5,12 @@ request: it finds waste in running infrastructure and drafts the fix as a PR, an
 infrastructure PR before merge and posts its kgCO2e delta with validated lower-carbon suggestions.
 Humans decide; the agent cannot apply, merge or delete anything.
 
-> **Demo video (4 min, agent running):** TODO-VIDEO-LINK
+> **Demo video (agent running):** [watch on SharePoint](https://nagarro-my.sharepoint.com/:f:/p/mohd_javed/IgDLEbuxd7uKS6Ztnto26CKDASv_R0VuWm8bkV9GhcYQfNA?e=Vgxjut)
 >
-> **Live gate example:** [emissiongate-demo-estate PR #1](https://github.com/MohdJaved01/emissiongate-demo-estate/pull/1) (a PR adding 2 × g5.2xlarge, with the gate's comment). Its red ❌ `gate` check is the
-> intended result: +683.5 kgCO2e/yr is above the 100 kg threshold, so the check fails until a human
-> comments a reason and adds `eg/carbon-accepted` (or commits the suggestion). Merging stays a human
-> decision.
+> **Live gate example:** [emissiongate-demo-estate PR #1](https://github.com/MohdJaved01/emissiongate-demo-estate/pull/1) (a PR adding 2 × g5.2xlarge, with the gate's comment). At +683.5 kgCO2e/yr it
+> was above the 100 kg threshold, so the `gate` check failed ❌ until a human commented a reason and
+> added `eg/carbon-accepted`; the re-run passed ✅ and the comment now records who accepted and why.
+> The PR is left open: merging stays a human decision.
 >
 > **Sample output without installing anything:** [docs/sample-run/](docs/sample-run/) — the HTML run
 > report and the four PR drafts from today's local-LLM run (synthetic).

@@ -127,7 +127,7 @@ emissiongate gate --estate-dir . --base <main commit> --head <PR commit> \
 |---|---|---|
 | a decrease, or under 25 kgCO2e | ✅ pass | nothing |
 | 25 to 100 kgCO2e | ✅ pass with a warning | the reviewer reads the comment |
-| 100 kgCO2e or more | ❌ acknowledgement required | commit a suggestion, or comment a reason and add `eg/carbon-accepted` — PR #1 is here, at +683.5 |
+| 100 kgCO2e or more | ❌ acknowledgement required | commit a suggestion, or comment a reason and add `eg/carbon-accepted` — PR #1 was here, at +683.5, until a human accepted it with a reason |
 | plan failed, or code screened out | ⚪ not evaluated (passes) | nothing; other CI owns syntax errors |
 | tags only | no comment | nothing |
 
