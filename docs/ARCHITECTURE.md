@@ -4,6 +4,9 @@ EmissionGate is one Python process that reads synthetic billing, utilisation and
 data, computes per-resource energy and emissions deterministically, and delivers reviewable pull
 requests. A local open-weight LLM assists with choices, repair and narrative. Two humans gate the flow.
 
+> This document describes the full design. Which parts are built in this submission and which are
+> designed only: [README status table](../README.md#status-built-vs-designed).
+
 All diagrams are Mermaid and render on GitHub. The one-page posters are exported to `docs/img/`
 (`architecture-overview.png`, `architecture-sweep.png`, `architecture-gate.png`); the Mermaid diagrams are
 the detailed, editable versions.

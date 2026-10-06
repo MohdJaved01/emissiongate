@@ -23,6 +23,7 @@ Humans decide; the agent cannot apply, merge or delete anything.
 | Agent design document (architecture, decision points, oversight, failure handling) | [docs/AGENT_DESIGN.md](docs/AGENT_DESIGN.md) |
 | Pitch deck (10 slides) | [docs/EmissionGate-pitch.pdf](docs/EmissionGate-pitch.pdf) · [.pptx](docs/EmissionGate-pitch.pptx) |
 | Augmentation log (AI usage across the lifecycle) | [docs/augmentation-log.md](docs/augmentation-log.md) |
+| How the PR gate runs, step by step, and how another repo adopts it | [docs/USING_THE_GATE.md](docs/USING_THE_GATE.md) |
 | Demo video | link above |
 
 **Built with:** Claude Code (all code in this repository) and Claude (design and documents). Codex licences
@@ -111,6 +112,10 @@ It prints the comment the PR would get. In the estate repo, `.github/workflows/e
 runs the same command on every pull request and posts the comment. The estate repository's contents
 are reproducible from this one: `python scripts/build_estate_repo.py OUT_DIR` (the workflow source is in
 [`estate-repo/`](estate-repo/)).
+
+**Another repository** opts in by copying that one workflow file; nothing runs in this repository.
+[docs/USING_THE_GATE.md](docs/USING_THE_GATE.md) follows PR #1 step by step and lists what a real
+repository needs first (credential-free plans, real utilisation data, a pinned version).
 
 ### What you will see
 
@@ -245,6 +250,7 @@ tests/              unit, golden values, ground truth (sweep and gate scenarios)
 ```
 
 More: [Architecture](docs/ARCHITECTURE.md) · [Methodology](docs/METHODOLOGY.md) · [PR gate](docs/GATE.md) ·
+[Using the gate](docs/USING_THE_GATE.md) ·
 [Interventions](docs/INTERVENTIONS.md) · [Data contracts](docs/DATA_CONTRACTS.md) ·
 [Build plan](docs/BUILD_PLAN.md) · [Decisions](docs/adr/README.md) · [Demo script](docs/DEMO_SCRIPT.md) ·
 [Developing with Codex or Claude Code](docs/DEVELOPING.md) · [Third-party components](THIRD_PARTY.md)

@@ -11,8 +11,16 @@ designed only is listed in the [README status table](../README.md#status-built-v
 
 ![Two modes, one engine](img/architecture-overview.png)
 
-Detailed one-page architecture for each mode: [sweep](img/architecture-sweep.png) ·
+Detailed one-page architecture for each mode, with goal, users, data sources, tools, orchestration,
+decision points, human oversight and failure handling on one page: [sweep](img/architecture-sweep.png) ·
 [gate](img/architecture-gate.png). Diagrams as code: [ARCHITECTURE.md](ARCHITECTURE.md).
+
+The diagrams show the full design; a dark **designed** tag marks each part that is designed, not built in
+this submission: the Planner's LLM scan plan and LLM classification (the run scans every resource in the
+approved scope), opening real PRs (`github.pr (live)`), the feedback loop from rejection labels to
+`suppressions.yaml`, the calibration loop, the live grid tier at run time, resuming after a budget stop,
+LLM prose in the gate, repairing a gate suggestion that fails to plan (it is dropped), and the
+two-workflow comment for fork PRs.
 
 ---
 
@@ -51,7 +59,7 @@ All data is synthetic or public. No customer, confidential or personal data is u
 | Synthetic utilisation series | hourly CPU, GPU, memory per resource | generated, seed 42 | Collector, Quantifier |
 | Terraform estate (HCL) | 10 resource groups, one file each | generated; demo repo `emissiongate-demo-estate` | Collector, Validator, gate |
 | Cloud Carbon Footprint coefficients | watts per vCPU/GPU, memory, storage, PUE, regional grid factors | Apache-2.0, vendored at pinned commit `f584c549` | Quantifier |
-| UK Carbon Intensity API | half-hourly intensity and 48 h forecast, eu-west-2 | CC BY 4.0; committed snapshot as fallback | Quantifier (time shift) |
+| UK Carbon Intensity API | half-hourly intensity and 48 h forecast, eu-west-2 | CC BY 4.0; fetched once by `emissiongate grid-snapshot` and committed; runs read the snapshot (live tier at run time designed, not built) | Strategist (time shift) |
 | `policy.yaml`, `suppressions.yaml` | guardrails, thresholds, human rejections | in repo, edited by humans | Strategist, gate |
 | PR plan diff | base vs head `tofu show -json` | the PR under review | gate |
 
@@ -64,8 +72,8 @@ regulatory log bucket) that look like waste but must be refused. See [SYNTHETIC_
 |---|---|---|---|
 | DuckDB | query the billing parquet | Collector | read-only |
 | OpenTofu `fmt`, `validate`, `plan`, `show -json` | prove a fix is valid HCL; read a PR's plan | Validator, gate | `-refresh=false`, dummy credentials, providers only from a vetted local mirror — **never touches AWS** |
-| Local LLM via Ollama (`gpt-oss:20b`, Apache-2.0) | built: choosing a template's parameters, repairing a failed plan, PR narrative · designed, not built: scan planning, ambiguous classification | Planner, Strategist, Validator | structured JSON only, schema-validated; never produces a number |
-| GitHub REST (httpx) | post the gate comment and check; open PRs in live mode | Reporter, Validator | gate: comment + job result only; never pushes or merges |
+| Local LLM via Ollama (`gpt-oss:20b`, Apache-2.0) | built: choosing a template's parameters, repairing a failed plan, PR narrative · designed, not built: scan planning, ambiguous classification | Strategist, Validator (through `agents/decider.py`) | structured JSON only, schema-validated; never produces a number |
+| GitHub REST (httpx) | post the gate comment and read the acknowledgement label · designed, not built: open PRs in live mode | Reporter (gate) | gate: comment + job result only; never pushes or merges |
 | CodeCarbon | measure the agent's own energy around the whole run | orchestrator | local measurement; labelled `measured` or `estimated` |
 | SQLite ledger | append-only record of every step, tool call and LLM call | everything | `INSERT` only; a trigger rejects updates and deletes |
 
@@ -89,14 +97,17 @@ flowchart LR
   H -.->|"rejection labels → suppressions"| P
 ```
 
-**Sweep mode** runs the whole pipeline on demand (`make demo-offline` or `make demo`) and exits.
-Checkpoints after each state make a run resumable; hard budgets cap LLM calls, tokens, repairs, time and
-PRs.
+**Sweep mode** runs the whole pipeline on demand (`make demo-offline` or `make demo`) and exits. In this
+submission the Planner step is deterministic: the run takes the scope and budget approved at Gate 1 and
+scans every resource in it (LLM scan planning and the dotted feedback loop are designed, not built). A
+checkpoint is written before every state transition (resuming from it, `--resume`, is designed, not
+built); hard budgets cap LLM calls, tokens, repairs, time and PRs.
 
 **Gate mode** runs in GitHub Actions on every PR that touches `**/*.tf`: a Diff Collector replaces the
 Collector (plan of base and head, paired by resource address), the same Quantifier and Strategist
 compute the delta and suggestions, the Validator proves each suggestion plans, and the Reporter posts one
-comment and sets the check. No LLM runs in CI. Spec: [GATE.md](GATE.md).
+comment and sets the check. No LLM runs in CI. Spec: [GATE.md](GATE.md); one PR step by step, and
+how another repository adopts the gate: [USING_THE_GATE.md](USING_THE_GATE.md).
 
 The two modes share every component that produces a number, so a figure in a PR comment and a figure
 in the run report always agree.
@@ -129,7 +140,7 @@ EmissionGate informs; humans decide.
 | Increases above threshold | failing check until a suggestion is committed or a human acknowledges with a reason | label, reason and acknowledger in the ledger |
 | Guardrail hits | advisory in the report; no diff is written | ledger |
 | Repair exhausted | escalated draft with the plan error | ledger |
-| Rejections | `eg/false-positive`, `eg/wrong-fix`, `eg/needs-context` labels become rules in `suppressions.yaml`, editable in git | git history |
+| Rejections | `suppressions.yaml`, edited by a human in git, is read by every run; turning `eg/false-positive`, `eg/wrong-fix`, `eg/needs-context` labels into rules automatically (`sync-feedback`) is designed, not built | git history |
 
 Financial, contractual and reputational actions are out of the agent's reach by construction: it cannot
 merge, apply, delete or spend.
@@ -138,14 +149,15 @@ merge, apply, delete or spend.
 
 | Failure | Detected by | Response | Outcome visible as |
 |---|---|---|---|
-| Malformed billing partition | schema check | skip it; planner re-plans | reduced coverage in the report |
+| Malformed billing partition | schema check | designed, not built (skip it and re-plan); today a missing billing file stops the run with an error | — |
 | Too few metric datapoints | count < `min_datapoints` (500 hourly) | resource excluded | "insufficient data" with count |
-| Grid API unreachable | 5 s timeout, 2 retries | committed snapshot, then annual factor | tier stamped on every figure |
+| No grid data for a region | snapshot lookup | no time-shift PR; totals use the annual factor | advisory with reason; tier stamped on every figure |
+| Grid API unreachable while fetching a snapshot | 5 s timeout, 2 retries | `grid-snapshot` fails; the committed snapshot stays | command error |
 | Plan fails | `tofu` exit code | repair ≤ 3, then escalate | recovered or `ESCALATED` |
 | LLM returns invalid JSON | pydantic validation | one re-ask, then deterministic path | `fallback` event in the ledger |
-| Ollama not running | connection error | whole run continues offline | report says so |
+| Ollama not running | connection error | at start: the whole run continues in offline behaviour; mid-run: that call falls back to the rule or template path | report says so; `fallback` events and count |
 | Guardrail hit | policy check before any decision | no diff written | `BLOCKED` or advisory |
-| Budget exhausted | ledger counters | stop at the next checkpoint | `BUDGET_STOPPED`, resumable |
+| Budget exhausted | ledger counters | stop at the next checkpoint | `BUDGET_STOPPED` (resume designed, not built) |
 | Ledger write fails | assertion | abort the run | `FAILED` — no unaudited work |
 | Gate: plan fails on base or head | exit code | comment "not evaluated" with the error tail | neutral check, never a false pass |
 | Gate: resource type not in factors | factor lookup | listed as not quantified | named in the comment, never guessed |
@@ -156,7 +168,8 @@ merge, apply, delete or spend.
 The hackathon scores the agent's sustainability, so it is measured, not asserted:
 
 - CodeCarbon wraps the whole run, local model included; the report labels energy `measured` or
-  `estimated` (on laptops without power counters it is an estimate, and the report says so).
+  `estimated`. On the build laptop it is `estimated`: CodeCarbon reads CPU energy from hardware counters
+  (Windows EMI) but models RAM power, and the report says so.
 - Reported per run: kWh, kgCO2e (SCI per run), LLM calls, tokens and the payback ratio (kgCO2e/yr the
   run proposed ÷ kgCO2e the run emitted).
 - Efficiency choices: deterministic maths, one local open-weight model with low/medium reasoning, fixed
@@ -166,6 +179,7 @@ The hackathon scores the agent's sustainability, so it is measured, not asserted
 ## 10. Where to read more
 
 [METHODOLOGY.md](METHODOLOGY.md) — formulas, golden values, simplifications ·
-[GATE.md](GATE.md) — PR gate · [INTERVENTIONS.md](INTERVENTIONS.md) — fix templates ·
+[GATE.md](GATE.md) — PR gate · [USING_THE_GATE.md](USING_THE_GATE.md) — the gate on one PR, and on
+another repository · [INTERVENTIONS.md](INTERVENTIONS.md) — fix templates ·
 [ARCHITECTURE.md](ARCHITECTURE.md) — state machines, trust boundary, deployment ·
 [adr/](adr/README.md) — decisions · [augmentation-log.md](augmentation-log.md) — how AI was used to build it

@@ -447,6 +447,117 @@ the milestone. Entries are factual: what failed is recorded, not smoothed over.
 
 ---
 
+## After build day
+
+### 6 Oct 2026 16:24 IST — Submission check against the hackathon brief — Claude Code
+- **Attempted:** the human pasted the five repository requirements (README, agent design document, pitch
+  deck, demo video, this log) and allowed Claude Code to update anything that fell short. Claude Code
+  checked each deliverable against the brief and the code.
+- **Output:** README and this log already met the brief. Pitch deck: edited in PowerPoint through COM
+  automation driven by Claude Code, PDF re-exported from PowerPoint, every changed slide rendered and
+  inspected. AGENT_DESIGN: statements aligned with what is built.
+- **Decision:** the human allowed the update; the commit waits for the human's approval.
+- **Errors found (by Claude Code, comparing the documents with the code):**
+  - **Pitch deck:**
+    1. Slide 7 said "573 kgCO2e/yr avoided by three sweep fixes", and its chart had three of the four
+       PRs.
+    2. Slide 7 said "+684 stopped at review", but the gate flags the change; a human decides.
+    3. Slide 4 coloured the Planner as an LLM step, but LLM scan planning is not built.
+    4. Slide 9 said "low reasoning by default" and "estimated where the laptop has no power counters".
+       The judge review had already corrected both in the README.
+    5. The speaker notes on slide 7 listed three fixes. The notes on slide 5 said rejection labels
+       "become rules", which is not built.
+  - **AGENT_DESIGN** described designed-only parts as working:
+    1. a Planner agent that calls the LLM
+    2. resumable runs
+    3. a live grid API with fallback at run time
+    4. opening PRs in live mode
+    5. rejection labels turned into suppressions
+    6. skipping a malformed billing partition
+    7. power counters (same issue as slide 9)
+
+    The detailed diagrams show the full design without saying which parts are unbuilt.
+  - **Claude Code's own errors:**
+    1. The first recolour of slide 4 filled the Planner's text box instead of its rectangle, and the box
+       rendered white. Claude Code found it by viewing the rendered slide.
+    2. Claude Code wrongly flagged the "Ollama not running → whole run continues offline" row as an
+       overclaim and rewrote it as per-call fallback. It found the error itself in the next entry while
+       reading `llm/factory.py`: an unreachable Ollama at start does switch the whole run to offline
+       behaviour, and the report says so. The row now describes both cases.
+- **Corrective steps:**
+  - **Slide 7:**
+    - The figure is now "608 kgCO2e/yr in four sweep fix PRs: proposed, not merged".
+    - The dev API bar (−34.7) is added to the chart.
+    - The gate figure is now "+684 flagged at review (range 263–1,104, assumed load)".
+    - The footnote now carries the run metrics: precision, recall, trap violations and the agent's
+      grams per run.
+  - **Slide 4:** the Planner is shown as deterministic code ("scope · budget ceilings").
+  - **Slide 9:** the wording now matches the README.
+  - **Speaker notes:** corrected on slides 5 and 7.
+  - **AGENT_DESIGN:** a built-vs-designed note sits under the diagrams, and each overstated row now
+    says what runs today.
+  - **Slide 4 recolour:** fixed by recolouring the rectangle and matching its border.
+- **Evidence:** this commit. Slide text was extracted from the .pptx after the edit, and the PDF has 10
+  pages (PowerPoint export).
+
+### 6 Oct 2026 16:30 IST — Gate walkthrough and adoption guide — Claude Code, from a page the human shared
+- **Attempted:** the human shared a claude.ai explainer page on how the PR gate runs and how another
+  repository could use it, and asked for it to be added to a document or slide. Claude Code checked
+  every claim on the page against the workflow, the code and PR #1 (`gh pr view`, `gh run list`,
+  read-only) before adding it.
+- **Output:**
+  - `docs/USING_THE_GATE.md`: PR #1 step by step, how the check is decided, how a red check turns green,
+    and what another repository needs.
+  - Links to it from the README and AGENT_DESIGN.
+  - Slide 3 says a repository opts in by adding one workflow file. Slide 10's "Next" adds "Gate on real
+    repos". A speaker note on slide 3 points to the document.
+  - The deck stays at 10 slides, the brief's maximum.
+- **Decision:** the human asked for the addition; the commit waits for the human's approval.
+- **Errors found in the shared page (by Claude Code, against the code):**
+  1. The token count was 6,623; the manifest says 6,624.
+  2. It said the gate repairs a failing suggestion up to 3 times; the gate drops it.
+  3. It listed S3 lifecycle rules among the resources the gate quantifies; they are not.
+  4. It called the hosted-LLM switch an optional feature; `llm/factory.py` treats it as not enabled.
+  5. Under "works today" it left out the safety screen. Data sources, registry or git modules and remote
+     backends make a PR "not evaluated".
+  6. It also left out that plans run with no credentials. A real provider block will not plan without
+     the estate's dummy keys.
+  7. It left out the AWS provider pin (`~> 6.0`).
+- **Corrective steps:**
+  - The document uses the code's behaviour for each of these.
+  - It adds the safety screen as an explicit step.
+  - It lists the real-repository gaps under "Needs work".
+  - AGENT_DESIGN's built-vs-designed note now also lists suggestion repair in the gate.
+- **Evidence:** this commit. PR #1 job 69 s (10:31:53–10:33:02 UTC), check 25.8 s and 0.383 Wh, both
+  from the posted comment.
+
+### 6 Oct 2026 16:57 IST — Built-vs-designed marks on the diagrams and spec docs — Claude Code
+- **Attempted:**
+  - The human asked whether the architecture diagrams needed revisiting.
+  - Claude Code recommended marking their designed-only parts.
+  - The human agreed.
+- **Output:**
+  - **Diagrams:** the three diagrams in `docs/img/` now carry a dark "designed" tag on each
+    designed-only element, plus a key entry: 7 tags on the sweep diagram, 4 on the gate diagram, 2 on
+    the overview.
+    - **How they were made:** the original PNGs were placed in PowerPoint through COM, the tags were
+      overlaid, and each image was exported at its original pixel size (3212 × 1720 and 3212 × 896).
+    - **What did not change:** the rest of each image.
+  - **Spec docs:** ARCHITECTURE.md and GATE.md now open with a pointer to the README status table.
+- **Decision:** the human approved the change and the commit.
+- **Errors found (by Claude Code, viewing each render):**
+  - On the sweep diagram, the first "live PRs" tag clipped the text below it.
+  - The overview's tags and legend were too small for that image's larger text.
+- **Corrective steps:**
+  - The "live PRs" tag was moved up.
+  - The overview's tags were enlarged.
+  - The key text now uses the key's own font and size.
+- **Not changed:** the copy of the overview inside slide 3. Tags at that size would be unreadable, and
+  slide 10's roadmap lists the same items.
+- **Evidence:** this commit.
+
+---
+
 ## Totals (fill in at submission)
 
 | | Count |

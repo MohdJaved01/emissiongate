@@ -8,6 +8,11 @@ Same engine, two triggers. The gate reuses the factors, energy model, policy, pa
 and ledger. What is new is how it collects facts (from a plan diff, not from billing) and where it
 reports (a PR comment and a check, not a new PR).
 
+> This is the gate's specification, including parts designed but not built (`sync-feedback`, the
+> calibration loop, the fork-PR workflow). How the built gate behaves on a real PR, and what another
+> repository needs: [USING_THE_GATE.md](USING_THE_GATE.md). Status of everything:
+> [README](../README.md#status-built-vs-designed).
+
 ## 1. How it behaves — one pull request, start to finish
 
 1. An engineer opens or updates a PR on the infrastructure repo that touches `*.tf`.
