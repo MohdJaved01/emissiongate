@@ -1,8 +1,15 @@
-"""Settings from the environment (.env, never secrets), policy.yaml and suppressions.yaml."""
+"""Settings from the environment (.env, never secrets), policy.yaml and suppressions.yaml.
+
+CI mode (`ci=True`, the gate's `--ci`) reads only trusted inputs (THREAT_MODEL B2): the job's
+environment, which the workflow sets, an optional trusted config directory, and the engine's own
+defaults. It never loads `.env` files and never reads policy from the working directory, which in CI
+may be the pull request's checkout.
+"""
 
 from __future__ import annotations
 
 import os
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -48,6 +55,7 @@ class Settings:
     device_lifespan_years: float
     grid_snapshot_dir: Path
     predictions_dir: Path
+    ci: bool = False
 
     def policy(self) -> dict:
         return load_yaml(self.policy_path)
@@ -64,12 +72,38 @@ def load_yaml(path: Path) -> dict:
     return doc
 
 
-def load_settings(cwd: Path | None = None) -> Settings:
+class UntrustedInput(ValueError):
+    """A CI run is configured to read a trusted input from inside the pull request's tree."""
+
+
+def _policy_path(cwd: Path, ci: bool, trusted_root: Path | None) -> Path:
+    if ci:
+        candidates = [trusted_root / "policy.yaml"] if trusted_root else []
+        return Path(
+            _env("EG_POLICY", str(_first_existing(*candidates, PACKAGE_ROOT / "policy.yaml")))
+        )
+    return Path(
+        _env("EG_POLICY", str(_first_existing(cwd / "policy.yaml", PACKAGE_ROOT / "policy.yaml")))
+    )
+
+
+def _suppressions_path(cwd: Path, ci: bool, trusted_root: Path | None) -> Path:
+    first = trusted_root if ci else cwd
+    candidates = [first / "suppressions.yaml"] if first else []
+    return _first_existing(*candidates, PACKAGE_ROOT / "suppressions.yaml")
+
+
+def load_settings(
+    cwd: Path | None = None, *, ci: bool = False, trusted_root: Path | None = None
+) -> Settings:
+    """`ci=True`: trusted inputs only; `trusted_root` holds policy.yaml/suppressions.yaml to use."""
     cwd = (cwd or Path.cwd()).resolve()
     # .env.example carries the committed defaults; .env (if any) overrides. Neither holds secrets.
-    for env_file in (cwd / ".env", cwd / ".env.example", PACKAGE_ROOT / ".env.example"):
-        if env_file.exists():
-            load_dotenv(env_file, override=False)
+    # In CI the working directory may be the pull request's tree, so no .env file is read at all.
+    if not ci:
+        for env_file in (cwd / ".env", cwd / ".env.example", PACKAGE_ROOT / ".env.example"):
+            if env_file.exists():
+                load_dotenv(env_file, override=False)
     embodied = _env("EG_DEVICE_EMBODIED_KG_CO2E")
     return Settings(
         cwd=cwd,
@@ -77,14 +111,8 @@ def load_settings(cwd: Path | None = None) -> Settings:
         estate_dir=(cwd / _env("EG_ESTATE_DIR", ".estate")).resolve(),
         runs_dir=cwd / _env("EG_RUNS_DIR", "runs"),
         factors_dir=Path(_env("EG_FACTORS_DIR", str(PACKAGE_ROOT / "factors"))),
-        policy_path=Path(
-            _env(
-                "EG_POLICY", str(_first_existing(cwd / "policy.yaml", PACKAGE_ROOT / "policy.yaml"))
-            )
-        ),
-        suppressions_path=_first_existing(
-            cwd / "suppressions.yaml", PACKAGE_ROOT / "suppressions.yaml"
-        ),
+        policy_path=_policy_path(cwd, ci, trusted_root),
+        suppressions_path=_suppressions_path(cwd, ci, trusted_root),
         versions_tf=PACKAGE_ROOT / "tofu" / "versions.tf",
         tofu_bin=_env("EG_TOFU_BIN", "tofu"),
         tofu_plugin_dir=(cwd / _env("EG_TOFU_PLUGIN_DIR", ".tofu-providers")).resolve(),
@@ -104,4 +132,40 @@ def load_settings(cwd: Path | None = None) -> Settings:
         predictions_dir=Path(
             _env("EG_PREDICTIONS_DIR", str(PACKAGE_ROOT / "fixtures" / "predictions"))
         ),
+        ci=ci,
     )
+
+
+TRUSTED_PATHS = (
+    "data_dir",
+    "runs_dir",
+    "factors_dir",
+    "policy_path",
+    "suppressions_path",
+    "versions_tf",
+    "tofu_plugin_dir",
+    "grid_snapshot_dir",
+    "predictions_dir",
+)
+
+
+def _inside(path: Path, root: Path) -> bool:
+    return path.resolve().is_relative_to(root.resolve())
+
+
+def check_trusted(settings: Settings, untrusted_root: Path, strict: bool = False) -> list[str]:
+    """Every configured input path that lies inside `untrusted_root` (the PR's checkout).
+
+    With `strict`, raise `UntrustedInput` instead of returning a non-empty list.
+    """
+    found = [
+        f"{name} ({getattr(settings, name)}) is inside the pull request's tree"
+        for name in TRUSTED_PATHS
+        if _inside(Path(getattr(settings, name)), untrusted_root)
+    ]
+    tofu = shutil.which(settings.tofu_bin) or settings.tofu_bin
+    if Path(tofu).exists() and _inside(Path(tofu), untrusted_root):
+        found.append(f"tofu_bin ({tofu}) is inside the pull request's tree")
+    if strict and found:
+        raise UntrustedInput("; ".join(found))
+    return found

@@ -1,17 +1,22 @@
 # EmissionGate PR gate (docs/GATE.md, ADR-0015) for the synthetic estate repository.
 # Deterministic, no LLM, no secrets beyond the ephemeral GITHUB_TOKEN Actions provides.
 # It comments and sets this job's result; it never pushes to the PR branch, approves or merges.
+#
+# Trust layout (docs/THREAT_MODEL.md, B2): the pull request is checked out into estate/ and is the
+# only untrusted input. The engine, its provider mirror, telemetry, policy and outputs all live
+# outside estate/, and `--ci` refuses to run if any of them is configured inside it.
+# Still to do before this is a production reference (ENTERPRISE_READINESS E1/E7): pin every action
+# by full SHA, pin the engine to a release, and use the two-workflow pattern for fork PRs.
 name: emissiongate-gate
 
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
     paths: ["**/*.tf"]
+  pull_request_review:            # an acknowledgement is a review on the head commit (THREAT_MODEL B4)
+    types: [submitted, dismissed]
 
-permissions:
-  contents: read
-  pull-requests: write   # post / update the one sticky comment
-  issues: read           # read the eg/carbon-accepted label event and the reason comment
+permissions: {}                   # nothing by default; the job asks for what it needs
 
 concurrency:
   group: emissiongate-gate-${{ github.event.pull_request.number }}
@@ -21,10 +26,23 @@ jobs:
   gate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write        # post / update the one sticky comment; read reviews
+      issues: read                # read the eg/carbon-accepted label
+    env:
+      EG_COUNTRY_ISO: USA
     steps:
-      - name: Check out the infrastructure repo (base and head SHAs are needed)
+      - name: Trusted paths, all outside the pull request's checkout
+        run: |
+          echo "EG_DATA_DIR=$RUNNER_TEMP/eg-data" >> "$GITHUB_ENV"
+          echo "EG_RUNS_DIR=$RUNNER_TEMP/eg-runs" >> "$GITHUB_ENV"
+          echo "EG_TOFU_PLUGIN_DIR=$GITHUB_WORKSPACE/engine/.tofu-providers" >> "$GITHUB_ENV"
+
+      - name: Check out the pull request (untrusted; base and head SHAs are needed)
         uses: actions/checkout@v4
         with:
+          path: estate
           fetch-depth: 0
           persist-credentials: false   # untrusted PR HCL must not find a token in .git/config
 
@@ -33,14 +51,12 @@ jobs:
         with:
           repository: MohdJaved01/emissiongate
           ref: main
-          path: .emissiongate
+          path: engine
           persist-credentials: false
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
-          cache-dependency-path: .emissiongate/pyproject.toml
 
       - uses: opentofu/setup-opentofu@v1
         with:
@@ -50,31 +66,31 @@ jobs:
         id: mirror
         uses: actions/cache@v4
         with:
-          path: .emissiongate/.tofu-providers
-          key: tofu-providers-${{ runner.os }}-${{ hashFiles('.emissiongate/tofu/versions.tf') }}
+          path: engine/.tofu-providers
+          key: tofu-providers-${{ runner.os }}-${{ hashFiles('engine/tofu/versions.tf') }}
 
       - name: Mirror providers (cache miss only; the only networked tofu step, ADR-0014)
         if: steps.mirror.outputs.cache-hit != 'true'
-        working-directory: .emissiongate/tofu
-        run: tofu providers mirror "$GITHUB_WORKSPACE/.emissiongate/.tofu-providers"
+        working-directory: engine/tofu
+        run: tofu providers mirror "$EG_TOFU_PLUGIN_DIR"
 
       - name: Install EmissionGate
-        run: pip install -e .emissiongate
+        run: pip install -e engine
 
-      - name: Synthetic telemetry for observed utilisation (no Terraform written)
-        run: emissiongate estate --telemetry-only --seed 42 --out data
+      - name: Synthetic telemetry for observed utilisation (outside the checkout)
+        run: emissiongate estate --telemetry-only --seed 42 --out "$EG_DATA_DIR"
 
       - name: Carbon gate
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EG_TOFU_PLUGIN_DIR: .emissiongate/.tofu-providers
-          EG_COUNTRY_ISO: USA
+          GITHUB_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: >-
-          emissiongate gate --estate-dir .
-          --base ${{ github.event.pull_request.base.sha }}
-          --head ${{ github.event.pull_request.head.sha }}
-          --pr ${{ github.event.pull_request.number }}
-          --repo ${{ github.repository }}
+          emissiongate gate --ci --config-from-base
+          --estate-dir estate
+          --base "$BASE_SHA" --head "$HEAD_SHA"
+          --pr "$PR_NUMBER" --repo "$GITHUB_REPOSITORY"
           --post
 
       - name: Keep the prediction and ledger (calibration loop, GATE §7)
@@ -82,6 +98,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: emissiongate-gate-${{ github.event.pull_request.number }}
-          path: runs/
+          path: ${{ runner.temp }}/eg-runs/
           retention-days: 90
           if-no-files-found: ignore

@@ -1,5 +1,10 @@
 # Using the PR gate — one pull request, step by step, and how another repo adopts it
 
+> [!WARNING]
+> **Demo, not for production use.** Do not make this gate a required check, or run it on a repository
+> with real infrastructure, before 1.0. The hardening it needs is tracked in
+> [ENTERPRISE_READINESS.md](ENTERPRISE_READINESS.md) (E1) and [THREAT_MODEL.md](THREAT_MODEL.md).
+
 This page follows one real pull request from the moment it is opened to the carbon comment and check
 on it, then explains what another repository needs to use the gate. It is the practical companion to
 [GATE.md](GATE.md), the gate's specification. Figures come from
@@ -41,6 +46,13 @@ flowchart LR
 
 ## The run, start to finish
 
+> **Since E1 (25 Oct 2026)** the reference workflow differs from the PR #1 run described below: the pull
+> request is checked out into `estate/` and the engine into `engine/`; telemetry, outputs and the
+> provider mirror sit outside `estate/`; the gate runs with `--ci --config-from-base`, so nothing in
+> the pull request's tree can configure it; and an acknowledgement is a review on the head commit. See
+> [estate-repo/.github/workflows/emissiongate-gate.yml](../estate-repo/.github/workflows/emissiongate-gate.yml)
+> and [THREAT_MODEL.md](THREAT_MODEL.md).
+
 The whole job on PR #1 took about 69 seconds; the carbon check itself took 25.8 seconds.
 
 ### Trigger — on GitHub
@@ -55,13 +67,15 @@ The whole job on PR #1 took about 69 seconds; the carbon check itself took 25.8 
      pull_request:
        types: [opened, synchronize, reopened, labeled, unlabeled]
        paths: ["**/*.tf"]
+     pull_request_review:
+       types: [submitted, dismissed]
    ```
 
-   `synchronize` means new commits were pushed; `labeled` and `unlabeled` catch the acknowledgement
-   label. One run per PR is kept: a newer event cancels an older run that is still going.
+   `synchronize` means new commits were pushed; `labeled`, `unlabeled` and the review events catch
+   the acknowledgement. One run per PR is kept: a newer event cancels an older run that is still going.
 3. **GitHub starts a fresh Ubuntu runner** (free for public repositories) with a short-lived
    `GITHUB_TOKEN`. Its permissions are `contents: read`, `pull-requests: write` (the one comment) and
-   `issues: read` (the label event and the reason comment). The job has no AWS credentials.
+   `issues: read` (the label); reviews and the reviewer's permission are read with the same token. The job has no AWS credentials.
 
 ### Setup — on the runner
 
@@ -127,23 +141,26 @@ emissiongate gate --estate-dir . --base <main commit> --head <PR commit> \
 |---|---|---|
 | a decrease, or under 25 kgCO2e | ✅ pass | nothing |
 | 25 to 100 kgCO2e | ✅ pass with a warning | the reviewer reads the comment |
-| 100 kgCO2e or more | ❌ acknowledgement required | commit a suggestion, or comment a reason and add `eg/carbon-accepted` — PR #1 was here, at +683.5, until a human accepted it with a reason |
+| 100 kgCO2e or more | ❌ acknowledgement required | commit a suggestion, or add `eg/carbon-accepted` and a review giving the reason — PR #1 was here, at +683.5, until a human accepted it with a reason |
 | plan failed, or code screened out | ⚪ not evaluated (passes) | nothing; other CI owns syntax errors |
-| tags only | no comment | nothing |
+| tags only | a comment stating coverage (nothing carbon-relevant) | nothing |
 
 ## Turning a red check green
 
-1. **Comment** — a reviewer posts the reason, for example "Two-week staging test; we will schedule it
-   before production."
-2. **Label** — the same person adds `eg/carbon-accepted`. That event re-runs the workflow.
-3. **Re-run** — the gate accepts only if a person (not a bot) added the label, the reason comment is by
-   that same person, and both are newer than the PR's latest commit. A new push needs a new
-   acknowledgement.
-4. **Record** — who accepted and why is written to the ledger and shown in the comment.
+1. **Label** — a person with write access adds `eg/carbon-accepted`.
+2. **Review** — the same person submits a pull-request review (Comment or Approve) on the
+   latest commit, with the reason as the review body, for example "Two-week staging test; we will
+   schedule it before production." Submitting the review re-runs the workflow.
+3. **Re-run** — the gate accepts only if the latest `eg/carbon-accepted` label was added by a human
+   (not a bot) with write, maintain or admin permission, and that same person reviewed **exactly the
+   head commit** with a reason. The binding is the
+   commit SHA, so a new push always needs a new review, whatever the commit dates say.
+4. **Record** — who accepted, why and for which head commit is written to the ledger and shown in the
+   comment.
 
-Order matters in practice. A comment alone does not start a run, so if the label goes on first, the run
-finds no reason and stays red until it runs again: remove and re-add the label, or re-run the job from
-the Actions page.
+The hackathon build (5 Oct 2026, PR #1) used a label plus a comment, matched by time. E1 replaced it:
+commit dates are set by the author, so a time comparison could carry an old acknowledgement over to a
+new push (docs/THREAT_MODEL.md, B4).
 
 ## No LLM in the gate
 
@@ -177,11 +194,14 @@ published number.
    into the repository's `.github/workflows/`. Nothing changes on the `emissiongate` side.
 2. Pin the engine: replace `ref: main` with a commit SHA or tag, so a push to `emissiongate` cannot
    change the gate unannounced.
-3. Replace the synthetic-telemetry step with real utilisation, written as
-   `data/metrics/<resource-name>.json` (the Terraform name with `-` for `_`) in the format
+3. Replace the synthetic-telemetry step with real utilisation, written **outside the checkout** to
+   `$EG_DATA_DIR/metrics/<resource-name>.json` (the Terraform name with `-` for `_`) in the format
    `emissiongate estate --telemetry-only` produces. Without it, every changed resource is shown as an
    assumed range.
-4. Optionally, require the `gate` check in branch protection, so an unacknowledged increase blocks merge.
+4. To set thresholds per repository, commit `.emissiongate/policy.yaml` (and optionally
+   `suppressions.yaml`) to the default branch. With `--config-from-base` the gate reads them from the
+   PR's base commit, so a PR cannot loosen its own check.
+5. Optionally, require the `gate` check in branch protection, so an unacknowledged increase blocks merge.
 
 **Works today**
 

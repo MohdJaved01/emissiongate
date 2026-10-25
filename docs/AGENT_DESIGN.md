@@ -122,7 +122,7 @@ in the run report always agree.
 | D4 | Is the rendered change valid? | `tofu plan` exit code | patched HCL | LLM proposes new parameters, ≤ 3 attempts, then escalate to a human |
 | D5 | Deliver as PR or escalate | deterministic | validation result, duplicates, budget | escalated draft with the plan error attached |
 | D6 | Gate status for a PR | deterministic thresholds (warn 25, acknowledge 100 kgCO2e/yr) | net delta and its range | `not_evaluated` with reason; never a false pass |
-| D7 | Accept an increase anyway | **human**: label `eg/carbon-accepted` plus a reason | PR comment | check stays failed until both exist |
+| D7 | Accept an increase anyway | **human** with write access: label `eg/carbon-accepted` plus their own review on the head commit giving the reason | PR comment | check stays failed until both exist |
 | D8 | Merge | **human** (Gate 2) | PR | nothing changes until merged |
 
 The trust boundary: every published number comes from deterministic code in `core/`, which cannot

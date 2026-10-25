@@ -37,6 +37,7 @@ def pr_repo(tmp_path_factory, estate) -> Path:
     def branch(name: str, files: dict[str, str]) -> None:
         _git(repo, "checkout", "-q", "-b", name, "main")
         for rel, text in files.items():
+            (repo / rel).parent.mkdir(parents=True, exist_ok=True)
             (repo / rel).write_text(text, encoding="utf-8", newline="\n")
         _git(repo, "add", "-A")
         _git(repo, "commit", "-q", "-m", name)
@@ -56,6 +57,17 @@ def pr_repo(tmp_path_factory, estate) -> Path:
     branch("tags", {"legacy_worker.tf": lw.replace('"data"', '"data-platform"')})
     branch("broken", {"broken.tf": 'resource "aws_instance" "b" {\n  ami = \n}\n'})
     branch("unsafe", {"leak.tf": 'data "aws_caller_identity" "me" {}\n'})
+    # E1 hostile pull requests (THREAT_MODEL B1)
+    gpu = hcl.render_file(fleet, "# synthetic: true")
+    branch("hidden", {"gpu_fleet.tf": gpu, ".gitattributes": "gpu_fleet.tf export-ignore\n"})
+    branch(
+        "module-leak",
+        {
+            "mod.tf": 'module "m" {\n  source = "./modules/m"\n}\n',
+            "modules/m/main.tf": 'data "aws_caller_identity" "me" {}\n',
+        },
+    )
+    branch("json", {"leak.tf.json": '{"data": {"aws_caller_identity": {"me": {}}}}\n'})
     return repo
 
 
@@ -93,10 +105,24 @@ def test_scale_out_warns_and_suggests_graviton(tmp_path, estate, pr_repo) -> Non
     assert g.kg_co2e_yr_delta_vs_head == pytest.approx(-232.217, abs=5e-3)
 
 
-def test_tags_only_produces_no_comment(tmp_path, estate, pr_repo) -> None:
+def test_tags_only_still_states_coverage(tmp_path, estate, pr_repo) -> None:
     run = _gate(tmp_path, estate, pr_repo, "tags")
-    assert run.comment is None
     assert run.result.status == "pass"
+    assert run.comment and "**Coverage:** 1 changed resource seen · 0 quantified" in run.comment
+    assert "1 not carbon-relevant" in run.comment
+
+
+def test_gitattributes_cannot_hide_a_new_fleet(tmp_path, estate, pr_repo) -> None:
+    run = _gate(tmp_path, estate, pr_repo, "hidden")
+    assert run.result.status == "ack_required"
+    assert run.result.net_kg_co2e_yr == pytest.approx(683.517, abs=5e-3)
+
+
+@pytest.mark.parametrize("head", ["module-leak", "json"])
+def test_unscreened_code_is_not_planned(tmp_path, estate, pr_repo, head) -> None:
+    run = _gate(tmp_path, estate, pr_repo, head)
+    assert run.result.status == "not_evaluated"
+    assert "safety" in (run.comment or "")
 
 
 def test_data_source_is_not_planned(tmp_path, estate, pr_repo) -> None:
