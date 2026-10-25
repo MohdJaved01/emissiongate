@@ -126,6 +126,8 @@ Single test: `.venv/bin/pytest tests/unit/test_energy.py -k gpu -q`
 
 - Work milestone by milestone from `docs/BUILD_PLAN.md` — skill `milestone` (`$milestone M3` in Codex,
   `/milestone M3` in Claude Code). Do not start a milestone until the previous one's acceptance criteria pass.
+  Post-hackathon work is phased in `docs/ENTERPRISE_READINESS.md` (`/milestone E1`); its ADRs marked
+  *proposed* change no invariant until a human accepts them.
 - For anything in `core/`: write the test first with hand-checkable numbers. Golden values are in
   `docs/METHODOLOGY.md §6`; they must match to 3 decimal places.
 - Keep agents thin. Logic that could be pure belongs in `core/`.
@@ -229,7 +231,8 @@ Single test: `.venv/bin/pytest tests/unit/test_energy.py -k gpu -q`
 | Intervention templates and their HCL | `docs/INTERVENTIONS.md` |
 | Synthetic estate, traps, ground truth | `docs/SYNTHETIC_ESTATE.md` |
 | PR gate behaviour, thresholds, security | `docs/GATE.md` |
-| What to build next | `docs/BUILD_PLAN.md` |
+| What to build next | `docs/BUILD_PLAN.md`, then `docs/ENTERPRISE_READINESS.md` |
+| Gate threats and their controls | `docs/THREAT_MODEL.md` |
 | Tool setup: Codex, Claude Code, sandbox, cloud, reviews | `docs/DEVELOPING.md` |
 | Reviewer instructions | `docs/review/` |
 | Why a decision was made | `docs/adr/` |

@@ -1,0 +1,12 @@
+# Owners review changes to the parts that carry the safety case (ENTERPRISE_READINESS E7).
+# Enforced only once a ruleset on main requires code-owner review.
+*                       @MohdJaved01
+/src/emissiongate/core/ @MohdJaved01
+/factors/               @MohdJaved01
+/policy.yaml            @MohdJaved01
+/suppressions.yaml      @MohdJaved01
+/.github/               @MohdJaved01
+/AGENTS.md              @MohdJaved01
+/.agents/               @MohdJaved01
+/.codex/                @MohdJaved01
+/.claude/               @MohdJaved01

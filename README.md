@@ -5,6 +5,12 @@ request: it finds waste in running infrastructure and drafts the fix as a PR, an
 infrastructure PR before merge and posts its kgCO2e delta with validated lower-carbon suggestions.
 Humans decide; the agent cannot apply, merge or delete anything.
 
+> [!WARNING]
+> **Demo, not for production use.** This is a hackathon build. Until 1.0 it should not be a required
+> check or run on repositories with real infrastructure: see
+> [docs/ENTERPRISE_READINESS.md](docs/ENTERPRISE_READINESS.md) for the plan and
+> [SECURITY.md](SECURITY.md) for reporting a vulnerability.
+
 > **Demo video (agent running):** [watch on SharePoint](https://nagarro-my.sharepoint.com/:f:/p/mohd_javed/IgDLEbuxd7uKS6Ztnto26CKDASv_R0VuWm8bkV9GhcYQfNA?e=Vgxjut)
 >
 > **Live gate example:** [emissiongate-demo-estate PR #1](https://github.com/MohdJaved01/emissiongate-demo-estate/pull/1) (a PR adding 2 × g5.2xlarge, with the gate's comment). At +683.5 kgCO2e/yr it

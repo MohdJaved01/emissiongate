@@ -21,3 +21,7 @@ Short, immutable records. To change a decision, add a new ADR that supersedes th
 | [0015](0015-pr-gate-in-ci.md) | PR gate runs in CI on the infrastructure repo, deterministic, human-acknowledged | accepted |
 | [0016](0016-claude-code-builds-submission.md) | Claude Code builds the submission; the repository stays Codex-ready | accepted |
 | [0017](0017-native-windows-build-linux-ci-referee.md) | Build on native Windows; Linux CI is the referee | accepted; amends 0016 (environment) |
+| [0018](0018-customer-run-plugin.md) | Customer-run plugin: CLI, image, GitHub Action, plan-JSON mode; no hosted service in v1 | proposed; amends 0009, 0015 |
+| [0019](0019-telemetry-read-path.md) | Telemetry and billing read from customer-staged exports in v1 | proposed |
+| [0020](0020-invariants-for-customer-data.md) | Invariants for customer data, CI egress and short-lived credentials | proposed; amends AGENTS.md on acceptance |
+| [0021](0021-support-matrix-and-compatibility.md) | Support matrix, compatibility contract and v1 targets | proposed |
