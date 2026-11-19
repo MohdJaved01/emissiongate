@@ -115,7 +115,7 @@ Status: **built** (control and test exist), **E1** (in this phase), **later** (n
   status but has to trust the projections; plan-time code execution in the evaluate job could forge
   them. The screen and the vetted mirror stop the known paths; sandboxed planning is the defence in
   depth.
-- **"Not evaluated" (policy, ADR-0022 proposed).** The shipped policy fails it. GitHub counts a
+- **"Not evaluated" (policy, ADR-0022).** The shipped policy fails it. GitHub counts a
   `neutral` check as passing a required check, so a repository that sets
   `gate.not_evaluated_conclusion: neutral` lets a PR that trips the screen, or breaks its plan,
   merge without an acknowledgement. A policy without the key fails.

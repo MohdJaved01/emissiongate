@@ -57,8 +57,9 @@ Violating any of these is a bug even if tests pass. Check every change against t
 14. **The gate informs; humans decide.** It never pushes to a PR branch, never merges, and fails a check only
     at a threshold in `policy.yaml → gate`. Passing an acknowledgement-required check needs a human label with
     a reason, recorded in the ledger; it is bound to the head commit and given by a user with write
-    permission, and approval rules beyond that come from policy (E5). Assumed utilisation is always
-    published as a range, labelled `assumed`.
+    permission, and approval rules beyond that come from policy (E5). A result the gate cannot trust or
+    read fails closed and is never a carbon verdict (ADR-0022). Assumed utilisation is always published
+    as a range, labelled `assumed`.
 15. **Trusted inputs.** In CI, policy, suppressions, factors, prices, telemetry and tool paths come only
     from trusted sources (action inputs, the base commit, an organisation config repository or the engine
     package), never from the pull request's tree.
@@ -271,7 +272,8 @@ rule gives the safe path. More specific rules live in `src/emissiongate/core/AGE
 - **Real data (P0, invariant 12).** Flag real-looking account IDs, ARNs, customer or client names in the
   repo, and any code that sends customer data outside the customer's boundary.
 - **Gate overreach (P0, invariant 14).** Flag gate code that writes to a PR branch, merges, approves, fails a
-  check outside the configured thresholds, accepts without the label and a reason, or publishes an assumed
+  check outside the configured thresholds (a fail-closed refusal per ADR-0022 is not one), accepts
+  without the label and a reason, or publishes an assumed
   figure without its range and label. Safe path: comment, set the job result, record in the ledger.
 - **Secrets (P0, invariant 13).** Flag tokens or keys in code, fixtures, logs, reports, `.env.example`
   values, or ledger payloads, and long-lived credentials where a short-lived one would do.
