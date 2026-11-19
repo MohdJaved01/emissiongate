@@ -1,5 +1,9 @@
 # Augmentation log — how AI was used to build EmissionGate
 
+> **Closed on 19 Nov 2026** at the maintainer's request. It covers the hackathon build and the
+> follow-up work to 6 Oct 2026; no entries are added after that. Post-hackathon work is recorded in
+> commit messages and `docs/ENTERPRISE_READINESS.md` → Progress.
+
 This log records every significant use of AI across the software lifecycle: what was attempted, what the
 human accepted, modified or rejected, which errors were found (by the AI, by the human, or by tests),
 and what was done about them. Entries name the tool that did the work. Items marked **planned** are not
@@ -13,14 +17,14 @@ claimed until their evidence column is filled.
 | OpenAI Codex (CLI) under `AGENTS.md` and `.codex/` | work laptop, Windows | M0 scaffold prototype and checks (not in this repository's history); optional read-only reviews |
 | Claude (claude.ai) | browser | ideation, architecture, methodology, documentation, design reviews |
 
-**Rules every AI worked under** (enforced in [AGENTS.md](../AGENTS.md), `.codex/rules/`, `.claude/settings.json`)
+**Rules every AI worked under** (enforced in [AGENTS.md](../../AGENTS.md), `.codex/rules/`, `.claude/settings.json`)
 
 - No `tofu apply/destroy/import/state`, `terraform`, AWS CLI or live-mode demo — forbidden by command rules.
 - Every published number comes from deterministic code; LLM output may not contain figures (tested).
 - Networked steps (installs, provider mirror, model pull, the grid snapshot) and every commit and push
   ran only after the human's explicit approval in the session; on build day Claude Code ran them once
   approved (ADR-0017).
-- A human approves each milestone before it is ticked in [BUILD_PLAN.md](BUILD_PLAN.md).
+- A human approves each milestone before it is ticked in [BUILD_PLAN.md](../BUILD_PLAN.md).
 - Reviewer subagents in separate, read-only contexts checked M3 (methodology), M6 and M6.5
   (invariants), as BUILD_PLAN requires, and read the README as a judge before submission.
 
@@ -32,7 +36,7 @@ claimed until their evidence column is filled.
 (on 1 Oct 2026). Codex built and checked an M0 scaffold on a Windows work laptop on
 4–5 October. With the submission due on 5 October, that machine lacking a Linux toolchain and having too
 little memory for the local model, the submission was built from scratch with Claude Code
-([ADR-0016](adr/0016-claude-code-builds-submission.md)). The repository stays Codex-ready: the
+([ADR-0016](../adr/0016-claude-code-builds-submission.md)). The repository stays Codex-ready: the
 instructions, sandbox, rules, skills and reviewers below are what a Codex session starts from.
 
 ### What Codex did
@@ -120,7 +124,7 @@ second model (Codex) would be a stronger cross-check; that is listed as not done
 - **Decision:** accepted after review.
 - **Errors found:** an early GPU saving figure overstated the magnitude. **Corrected:** every figure now
   comes from the Cloud Carbon Footprint coefficients, with golden values in
-  [METHODOLOGY.md §6](METHODOLOGY.md) and a "never inflate a per-resource figure" rule.
+  [METHODOLOGY.md §6](../METHODOLOGY.md) and a "never inflate a per-resource figure" rule.
 
 ### 30 Sep 2026 — Developer tooling for Codex — Claude, checked against Codex documentation
 - **Attempted:** make the repository Codex-first: `AGENTS.md` as the canonical instructions, `.codex/`
@@ -141,7 +145,7 @@ second model (Codex) would be a stronger cross-check; that is listed as not done
 ### 1 Oct 2026 — Design review — human challenge, Claude
 - **Human challenge:** "The architecture analyses running resources. Where is the agent that validates
   a PR when infrastructure changes?" The gap was real: the project was named a gate but had none.
-- **Output:** gate mode on the same engine — [GATE.md](GATE.md), projection rules for resources with no
+- **Output:** gate mode on the same engine — [GATE.md](../GATE.md), projection rules for resources with no
   history, golden values G5–G7, ADR-0015, invariant 14 ("the gate informs; humans decide").
 - **Decision:** accepted.
 - **Weak points declared, not hidden:** utilisation for a new resource is assumed (CCF's 50% default),

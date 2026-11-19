@@ -182,4 +182,4 @@ The hackathon scores the agent's sustainability, so it is measured, not asserted
 [GATE.md](GATE.md) — PR gate · [USING_THE_GATE.md](USING_THE_GATE.md) — the gate on one PR, and on
 another repository · [INTERVENTIONS.md](INTERVENTIONS.md) — fix templates ·
 [ARCHITECTURE.md](ARCHITECTURE.md) — state machines, trust boundary, deployment ·
-[adr/](adr/README.md) — decisions · [augmentation-log.md](augmentation-log.md) — how AI was used to build it
+[adr/](adr/README.md) — decisions · [augmentation-log.md](hackathon/augmentation-log.md) — how AI was used to build it

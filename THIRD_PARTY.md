@@ -56,8 +56,8 @@ neighbouring problems. No code from either is used. Differences are listed in `d
 
 Claude Code (Anthropic) wrote all code in this repository on build day (ADR-0016, ADR-0017); OpenAI
 Codex built an earlier M0 prototype that is not in this repository. Every milestone was approved by a
-human before it was committed; agent instructions are in `AGENTS.md`; the augmentation log records who
-did what.
+human before it was committed; agent instructions are in `AGENTS.md`; the augmentation log (`docs/hackathon/`) records who
+did what on build day.
 
 | Build-day tool | Use | Licence |
 |---|---|---|
