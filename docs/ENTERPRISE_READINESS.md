@@ -119,10 +119,10 @@ Boxes are ticked only when an item is complete. Partial work is listed here.
 
 | Phase | Done | Partial or waiting |
 |---|---|---|
-| E0 | demo warnings in README and USING_THE_GATE; `milestone` skill accepts `E<n>`; ADR-0018 to ADR-0021 accepted (19 Nov) and `AGENTS.md` invariants 10, 12, 13, 14 reworded, 15 added, `agent-check` passing; hackathon material in `docs/hackathon/`, augmentation log closed | ownership and IP, and the steward, need a human decision; as reworded, invariant 12 (data origin on every figure, ADR-0019) and invariant 10 (gate egress blocked except to the SCM API, E1 reference workflow) are not yet met by the code |
-| E1 | trusted configuration (`--ci`, `--config-from-base`); tree export from git objects; acknowledgement bound to the head SHA with a permission check; escaped output; coverage in every comment; `tests/security/` | threat model written, not yet reviewed; screen is an interim regex hardening (all directories, unscreenable formats refused, file reads confined) until the parser lands; reference workflow: actions pinned by SHA, and since 19 Nov a two-step gate (evaluate with no token; `workflow_run` publish that validates `evaluation.json`, re-derives the status in `core/verdict.py`, and sets the `EmissionGate / carbon` check), which also covers fork PRs and refuses results it cannot trust: PRs that change `.github/`, other open PRs on the same commit, non-default bases, non-finite figures (`test_publish.py`, `test_workflows.py`); "not evaluated" now fails by default (`gate.not_evaluated_conclusion`, ADR-0022 proposed); still open in the reference workflow: engine pinned to a release, egress restriction, `zizmor`/`actionlint`; team-membership checks and sandboxed planning not started |
+| E0 | demo warnings in README and USING_THE_GATE; `milestone` skill accepts `E<n>`; ADR-0018 to ADR-0021 accepted (19 Nov) and `AGENTS.md` invariants 10, 12, 13, 14 reworded, 15 added, `agent-check` passing; hackathon material in `docs/hackathon/`, augmentation log closed | ownership decided (19 Nov: the maintainer, personal project; `NOTICE`, `GOVERNANCE.md`); as reworded, invariant 12 (data origin on every figure, ADR-0019) and invariant 10 (gate egress blocked except to the SCM API, E1 reference workflow) are not yet met by the code |
+| E1 | trusted configuration (`--ci`, `--config-from-base`); tree export from git objects; acknowledgement bound to the head SHA with a permission check; escaped output; coverage in every comment; `tests/security/` | threat model written, not yet reviewed; screen is an interim regex hardening (all directories, unscreenable formats refused, file reads confined) until the parser lands; reference workflow: actions pinned by SHA, and since 19 Nov a two-step gate (evaluate with no token; `workflow_run` publish that validates `evaluation.json`, re-derives the status in `core/verdict.py`, and sets the `EmissionGate / carbon` check), which also covers fork PRs and refuses results it cannot trust: PRs that change `.github/`, other open PRs on the same commit, non-default bases, non-finite figures (`test_publish.py`, `test_workflows.py`); "not evaluated" now fails by default (`gate.not_evaluated_conclusion`, ADR-0022); still open in the reference workflow: engine pinned to a release, egress restriction, `zizmor`/`actionlint`; team-membership checks and sandboxed planning not started |
 | E7 | read-only default `permissions` in `ci.yml`; `CODEOWNERS`; Dependabot for pip and Actions; every action pinned by full SHA with its version as a comment (19 Nov); `SECURITY.md` | — (private vulnerability reporting enabled in the repository settings, 19 Nov) |
-| E8 | `LICENSE` (Apache-2.0 text) and `NOTICE` | copyright holder in `NOTICE` is "The EmissionGate authors" until ownership is confirmed (E0) |
+| E8 | `LICENSE` (Apache-2.0 text), `NOTICE` with the copyright holder, `GOVERNANCE.md` | contribution terms beyond Apache-2.0 §5, privacy statement, procurement pack |
 
 Behaviour changes in E1: a PR whose plan has resource changes but none carbon-relevant now gets a comment
 stating coverage (before, no comment); an acknowledgement is the label plus a pull-request review on the
@@ -130,12 +130,13 @@ head commit by someone with write access (before, the label plus a comment, matc
 
 ---
 
-## E0 — Decisions and ground rules  `[ ]`
+## E0 — Decisions and ground rules  `[x]`
 
-- [ ] **Ownership and IP.** Confirm the code may be published and maintained under Apache-2.0. Check the
+- [x] **Ownership and IP.** Confirm the code may be published and maintained under Apache-2.0. Check the
   hackathon terms and any employer IP or open-source policy (the demo video is on a corporate
   SharePoint). Decide the steward: an individual, a company, or a foundation such as the Green Software
-  Foundation. Record the steward in `GOVERNANCE.md`.
+  Foundation. Record the steward in `GOVERNANCE.md`. *Decided 19 Nov 2026: the maintainer owns it as a
+  personal project and is the steward; `NOTICE` and `GOVERNANCE.md` say so.*
 - [x] **Delivery shape.** Accept or change the recommendation above in ADR-0018, *Customer-run plugin:
   CLI, image, GitHub Action and plan-JSON mode; no hosted service in v1*. It amends ADR-0009 and ADR-0015.
 - [x] **Invariants for real data.** The invariants in `AGENTS.md` assume synthetic data and a laptop.

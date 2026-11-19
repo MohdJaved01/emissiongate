@@ -1,6 +1,6 @@
 # ADR-0022: The gate fails closed when it cannot trust or read its own result
 
-- Status: proposed
+- Status: accepted (2026-11-19, by the maintainer)
 - Date: 2026-11-19
 - Clarifies: invariant 14 (the gate fails a check only at a threshold) and invariant 6 (fail closed)
 
