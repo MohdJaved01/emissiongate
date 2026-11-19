@@ -5,8 +5,9 @@
 # Trust layout (docs/THREAT_MODEL.md, B2): the pull request is checked out into estate/ and is the
 # only untrusted input. The engine, its provider mirror, telemetry, policy and outputs all live
 # outside estate/, and `--ci` refuses to run if any of them is configured inside it.
-# Still to do before this is a production reference (ENTERPRISE_READINESS E1/E7): pin every action
-# by full SHA, pin the engine to a release, and use the two-workflow pattern for fork PRs.
+# Actions are pinned by full SHA (Dependabot proposes updates). Still to do before this is a
+# production reference (ENTERPRISE_READINESS E1/E7): pin the engine to a release, and use the
+# two-workflow pattern so the token never shares a process with planning (fork PRs too).
 name: emissiongate-gate
 
 on:
@@ -40,31 +41,31 @@ jobs:
           echo "EG_TOFU_PLUGIN_DIR=$GITHUB_WORKSPACE/engine/.tofu-providers" >> "$GITHUB_ENV"
 
       - name: Check out the pull request (untrusted; base and head SHAs are needed)
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           path: estate
           fetch-depth: 0
           persist-credentials: false   # untrusted PR HCL must not find a token in .git/config
 
       - name: Check out EmissionGate
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: MohdJaved01/emissiongate
           ref: main
           path: engine
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.12"
 
-      - uses: opentofu/setup-opentofu@v1
+      - uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1.0.8
         with:
           tofu_wrapper: false
 
       - name: Restore the vetted provider mirror
         id: mirror
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: engine/.tofu-providers
           key: tofu-providers-${{ runner.os }}-${{ hashFiles('engine/tofu/versions.tf') }}
@@ -95,7 +96,7 @@ jobs:
 
       - name: Keep the prediction and ledger (calibration loop, GATE §7)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: emissiongate-gate-${{ github.event.pull_request.number }}
           path: ${{ runner.temp }}/eg-runs/
