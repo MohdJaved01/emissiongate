@@ -1,6 +1,6 @@
 # ADR-0018: Customer-run plugin — CLI, image, GitHub Action and plan-JSON mode; no hosted service in v1
 
-- Status: proposed
+- Status: accepted (2026-11-19, by the maintainer)
 - Date: 2026-10-25
 - Amends: ADR-0009 (local runtime only), ADR-0015 (PR gate in CI)
 

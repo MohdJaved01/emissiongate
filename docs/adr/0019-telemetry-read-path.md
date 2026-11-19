@@ -1,6 +1,6 @@
 # ADR-0019: Telemetry and billing are read from customer-staged exports in v1
 
-- Status: proposed
+- Status: accepted (2026-11-19, by the maintainer)
 - Date: 2026-10-25
 - Related: ADR-0003 (no capability to change infrastructure), ADR-0018
 

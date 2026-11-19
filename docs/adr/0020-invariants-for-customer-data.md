@@ -1,8 +1,8 @@
 # ADR-0020: Invariants for customer data, CI egress and short-lived credentials
 
-- Status: proposed
+- Status: accepted (2026-11-19, by the maintainer)
 - Date: 2026-10-25
-- Amends: the invariants in `AGENTS.md` (3, 10, 12, 13 and 14), once accepted
+- Amends: the invariants in `AGENTS.md` (3, 10, 12, 13 and 14); applied on 2026-11-19
 
 ## Context
 

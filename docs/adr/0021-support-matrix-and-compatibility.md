@@ -1,6 +1,6 @@
 # ADR-0021: Support matrix, compatibility contract and v1 targets
 
-- Status: proposed
+- Status: accepted (2026-11-19, by the maintainer)
 - Date: 2026-10-25
 
 ## Context
@@ -15,7 +15,7 @@ releases and what quality bar each release meets. ENTERPRISE_READINESS.md uses t
 
 | Area | Supported |
 |---|---|
-| SCM | GitHub.com; GHES — oldest supported version to be chosen on acceptance (proposal: the oldest release still in GitHub's support window at 1.0) |
+| SCM | GitHub.com; GHES — the oldest release still in GitHub's support window at 1.0 |
 | Runners | Linux amd64 and arm64 |
 | Python (CLI install) | 3.12 and 3.13 |
 | IaC input | OpenTofu ≥ 1.8 plans and configurations; Terraform plan JSON (input only; the Terraform CLI is never run, ADR-0006) |
@@ -27,7 +27,7 @@ schemas, exit codes, the comment marker (`<!-- emissiongate-gate -->`), the chec
 by one minor release that emits deprecation warnings. Before 1.0, minor releases may break these with a
 changelog entry.
 
-**Targets (proposed until accepted).**
+**Targets.**
 
 | Target | Value |
 |---|---|

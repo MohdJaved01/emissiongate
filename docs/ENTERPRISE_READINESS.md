@@ -5,9 +5,9 @@ repositories. It is the checklist for that work, with how to do each part. It fo
 [BUILD_PLAN.md](BUILD_PLAN.md): work top to bottom, tick a box in the commit that completes it, and close
 a phase only when its **Done when** criteria are shown with a command or test output.
 
-> Status: proposed, 11 Oct 2026; work started 25 Oct 2026 (see [Progress](#progress)). Decisions in
-> E0 are recommendations until their ADRs are accepted. Targets marked *proposed* are starting values
-> to confirm in E0.
+> Status: in progress; written 11 Oct 2026, work started 25 Oct 2026 (see [Progress](#progress)).
+> ADR-0018 to ADR-0021 were accepted on 19 Nov 2026, so the targets below marked *proposed* are now
+> the accepted values in ADR-0021.
 
 ## Starting point
 
@@ -119,9 +119,9 @@ Boxes are ticked only when an item is complete. Partial work is listed here.
 
 | Phase | Done | Partial or waiting |
 |---|---|---|
-| E0 | demo warnings in README and USING_THE_GATE; `milestone` skill accepts `E<n>` | ADR-0018 to ADR-0021 written as **proposed** (delivery shape, telemetry path, invariant wording, support matrix, compatibility and targets) — waiting for acceptance before `AGENTS.md` invariants change; ownership and IP, steward, GHES version and the hackathon-material move need a human decision |
+| E0 | demo warnings in README and USING_THE_GATE; `milestone` skill accepts `E<n>`; ADR-0018 to ADR-0021 accepted (19 Nov) and `AGENTS.md` invariants 10, 12, 13, 14 reworded, 15 added, `agent-check` passing; hackathon material in `docs/hackathon/`, augmentation log closed | ownership and IP, and the steward, need a human decision; as reworded, invariant 12 (data origin on every figure, ADR-0019) and invariant 10 (gate egress blocked except to the SCM API, E1 reference workflow) are not yet met by the code |
 | E1 | trusted configuration (`--ci`, `--config-from-base`); tree export from git objects; acknowledgement bound to the head SHA with a permission check; escaped output; coverage in every comment; `tests/security/` | threat model written, not yet reviewed; screen is an interim regex hardening (all directories, unscreenable formats refused, file reads confined) until the parser lands; reference workflow re-laid out with `--ci` but actions not yet pinned by SHA and no fork pattern; team-membership checks and sandboxed planning not started; the gate process still holds `GITHUB_TOKEN` while tofu plans as its child (screen blocks the known read paths; the two-job split or sandbox is the structural fix — THREAT_MODEL residual risks) |
-| E7 | read-only default `permissions` in `ci.yml`; `CODEOWNERS`; Dependabot for pip and Actions | pin actions by SHA (needs a network lookup by a human); `SECURITY.md` written — a human must enable private vulnerability reporting in the repository settings |
+| E7 | read-only default `permissions` in `ci.yml`; `CODEOWNERS`; Dependabot for pip and Actions; every action pinned by full SHA with its version as a comment (19 Nov); `SECURITY.md` | — (private vulnerability reporting enabled in the repository settings, 19 Nov) |
 | E8 | `LICENSE` (Apache-2.0 text) and `NOTICE` | copyright holder in `NOTICE` is "The EmissionGate authors" until ownership is confirmed (E0) |
 
 Behaviour changes in E1: a PR whose plan has resource changes but none carbon-relevant now gets a comment
@@ -136,9 +136,9 @@ head commit by someone with write access (before, the label plus a comment, matc
   hackathon terms and any employer IP or open-source policy (the demo video is on a corporate
   SharePoint). Decide the steward: an individual, a company, or a foundation such as the Green Software
   Foundation. Record the steward in `GOVERNANCE.md`.
-- [ ] **Delivery shape.** Accept or change the recommendation above in ADR-0018, *Customer-run plugin:
+- [x] **Delivery shape.** Accept or change the recommendation above in ADR-0018, *Customer-run plugin:
   CLI, image, GitHub Action and plan-JSON mode; no hosted service in v1*. It amends ADR-0009 and ADR-0015.
-- [ ] **Invariants for real data.** The invariants in `AGENTS.md` assume synthetic data and a laptop.
+- [x] **Invariants for real data.** The invariants in `AGENTS.md` assume synthetic data and a laptop.
   Write the ADRs first, then update `AGENTS.md`:
   - Invariant 12 (*all data is synthetic*) becomes: customer data stays in the customer's boundary; demo
     and test data are synthetic and labelled; every figure records its data origin
@@ -151,15 +151,16 @@ head commit by someone with write access (before, the label plus a comment, matc
   - Invariant 13 (*secrets*) becomes: short-lived credentials only — the Actions token, OIDC federation
     and GitHub App installation tokens.
   - Invariant 14 (*the gate informs*) gains the approval rules from E5.
-- [ ] **Support matrix v1.** GitHub.com and GHES (choose the oldest GHES version to support), Linux amd64
+- [x] **Support matrix v1.** GitHub.com and GHES (choose the oldest GHES version to support), Linux amd64
   and arm64 runners, OpenTofu ≥ 1.8 and Terraform plan JSON as input, AWS first.
-- [ ] **Compatibility contract.** Semantic versioning covers CLI flags, config and policy schemas, exit
+- [x] **Compatibility contract.** Semantic versioning covers CLI flags, config and policy schemas, exit
   codes, the comment marker, the check-run name, the ledger and evidence schemas and `GatePrediction`.
   Removals follow one minor release of deprecation warnings.
-- [ ] **Targets.** Confirm or change the proposed targets used below: coverage, latency, Scorecard score,
+- [x] **Targets.** Confirm or change the proposed targets used below: coverage, latency, Scorecard score,
   vulnerability fix times and the test coverage floor.
-- [ ] **Hackathon material.** Move the pitch deck, demo script and augmentation log under
-  `docs/hackathon/`, leaving git history as it is. Decide whether the augmentation log continues.
+- [x] **Hackathon material.** Move the pitch deck, demo script and augmentation log under
+  `docs/hackathon/`, leaving git history as it is. Decide whether the augmentation log continues
+  (decided: it does not).
 - [x] **Expectations.** Until 1.0, mark the README and `USING_THE_GATE.md` "demo, not for production use".
 - [x] **Agent workflow.** Let the `milestone` skill accept `E<n>` from this file. Edit the canonical
   `.agents/skills/milestone/SKILL.md`, then run `make agent-check`.
