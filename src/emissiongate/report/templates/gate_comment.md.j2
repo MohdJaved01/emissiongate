@@ -1,21 +1,27 @@
 {{ marker }}
 ## EmissionGate — carbon at merge time: {{ icon }} {{ label }}
 
+{% if seen %}
+**Coverage:** {{ seen }} changed resource{{ "s" if seen != 1 }} seen · {{ rows | length }} quantified · {{ not_quantified | length }} not quantified · {{ other | length }} not carbon-relevant
+{% else %}
+**Coverage:** no changed resources were read{% if r.status == "not_evaluated" %} (see below){% endif %}
+{% endif %}
+
 {% if r.status == "not_evaluated" %}
-This pull request was **not evaluated**: {{ reason }}. The check passes; other CI owns syntax errors.
+This pull request was **not evaluated**: {{ reason | text(400) }}. The check passes; other CI owns syntax errors.
 {% else %}
 **Net change: {{ net | signed }} kgCO2e/yr**{% if assumed %} (range {{ r.net_kg_co2e_yr_low | kg }} – {{ r.net_kg_co2e_yr_high | kg }}, assumed load){% endif %} · {{ kwh | signed }} kWh/yr · {{ usd | signed(0) }} USD/yr (synthetic prices)
 
 | Resource | Change | Utilisation basis | Before | After (kgCO2e/yr) | Delta |
 |---|---|---|---:|---:|---:|
 {% for row in rows %}
-| `{{ row.address }}` | {{ row.what }} | {{ row.basis }} | {{ row.p.kg_co2e_yr_before | kg }} | {{ row.p.kg_co2e_yr_after | kg }}{% if row.p.kg_co2e_yr_after_low is not none %} ({{ row.p.kg_co2e_yr_after_low | kg }}–{{ row.p.kg_co2e_yr_after_high | kg }}){% endif %} | **{{ row.delta | signed }}** |
+| {{ row.address | code }} | {{ row.what | text }} | {{ row.basis }} | {{ row.p.kg_co2e_yr_before | kg }} | {{ row.p.kg_co2e_yr_after | kg }}{% if row.p.kg_co2e_yr_after_low is not none %} ({{ row.p.kg_co2e_yr_after_low | kg }}–{{ row.p.kg_co2e_yr_after_high | kg }}){% endif %} | **{{ row.delta | signed }}** |
 {% endfor %}
 
 {% if r.status == "ack_required" %}
-**What to do.** The net increase is at or above {{ gate.ack_kg_co2e_yr | kg }} kgCO2e/yr, so this check fails until a human either commits one of the suggestions below **or** adds the label `{{ gate.ack_label }}` and a comment giving the reason. Merging is still your decision.
+**What to do.** The net increase is at or above {{ gate.ack_kg_co2e_yr | kg }} kgCO2e/yr, so this check fails until a human either commits one of the suggestions below **or** adds the label `{{ gate.ack_label }}` and, as the same person, submits a pull-request review (Comment or Approve) on the latest commit giving the reason. Only someone with write access can accept, and a new push needs a new review. Merging is still your decision.
 {% elif r.status == "accepted" %}
-**Accepted** by @{{ r.accepted_by }}: “{{ r.accepted_reason }}” — recorded in the ledger (`{{ r.ledger_run_id }}`).
+**Accepted** by @{{ r.accepted_by | checked_login }} for `{{ r.head_sha[:7] }}`: “{{ r.accepted_reason | text(500) }}” — recorded in the ledger (`{{ r.ledger_run_id }}`).
 {% elif r.status == "pass_with_warning" %}
 **Warning.** The net increase is above {{ gate.warn_kg_co2e_yr | kg }} kgCO2e/yr. No action is required; please read the suggestions.
 {% endif %}
@@ -23,12 +29,11 @@ This pull request was **not evaluated**: {{ reason }}. The check passes; other C
 
 ### Lower-carbon suggestions (each rendered from a fixed template and validated with `tofu plan`)
 {% for s in suggestions %}
-{{ loop.index }}. **{{ s.template }}** on `{{ s.address }}` ({% for k, v in s.params | dictsort %}{{ k }}=`{{ v }}`{% if not loop.last %}, {% endif %}{% endfor %}): **{{ s.kg_co2e_yr_delta_vs_head | signed }} kgCO2e/yr** vs this PR{% if s.basis == "assumed" %} (range {{ s.kg_co2e_yr_delta_high | signed }} to {{ s.kg_co2e_yr_delta_low | signed }}, assumed load){% endif %} · ledger #{{ s.ledger_event_id }}{% if s.template == "schedule" %} — assumes weekday business hours; confirm the real usage window{% endif %}{% if s.template == "graviton" %} — requires an arm64 build{% endif %}
+{{ loop.index }}. **{{ s.template }}** on {{ s.address | code }} ({% for k, v in s.params | dictsort %}{{ k }}={{ v | code }}{% if not loop.last %}, {% endif %}{% endfor %}): **{{ s.kg_co2e_yr_delta_vs_head | signed }} kgCO2e/yr** vs this PR{% if s.basis == "assumed" %} (range {{ s.kg_co2e_yr_delta_high | signed }} to {{ s.kg_co2e_yr_delta_low | signed }}, assumed load){% endif %} · ledger #{{ s.ledger_event_id }}{% if s.template == "schedule" %} — assumes weekday business hours; confirm the real usage window{% endif %}{% if s.template == "graviton" %} — requires an arm64 build{% endif %}
 
 <details><summary>diff</summary>
 
-```diff
-{{ s.diff }}```
+{{ s.diff | fence("diff") }}
 </details>
 
 {% endfor %}
@@ -38,16 +43,16 @@ This pull request was **not evaluated**: {{ reason }}. The check passes; other C
 
 **Not quantified** (listed, never guessed):
 {% for p in not_quantified %}
-- `{{ p.address }}`: {{ p.reason }}
+- {{ p.address | code }}: {{ p.reason | text }}
 {% endfor %}
+{% endif %}
+{% if notes %}
+
+**Notes:** {% for n in notes %}{{ n | text }}{% if not loop.last %}; {% endif %}{% endfor %}
 {% endif %}
 {% if other %}
 
-{% if notes %}
-**Notes:** {{ notes | join("; ") }}
-
-{% endif %}
-**Not carbon-relevant:** {% for c in other %}`{{ c.address }}` ({{ c.change }}){% if not loop.last %}, {% endif %}{% endfor %}
+**Not carbon-relevant:** {% for c in other %}{{ c.address | code }} ({{ c.change }}){% if not loop.last %}, {% endif %}{% endfor %}
 {% endif %}
 
 <sub>Deterministic check, no LLM in CI. Annual, location-based estimates from Cloud Carbon Footprint coefficients (`{{ factors_source }}`), grid tier `annual`. Assumed figures are always shown with their range. Synthetic estate and prices. This check ran in {{ "%.1f" | format(runtime_s) }} s{% if energy_wh is not none %}; its own energy ≈ {{ "%.3f" | format(energy_wh) }} Wh ({{ energy_label }}, CodeCarbon; hosted runners expose no hardware counters){% endif %}. EmissionGate never pushes, approves or merges. Ledger run `{{ r.ledger_run_id }}`{% if r.projection_event_id %}, projections #{{ r.projection_event_id }}{% endif %}; base `{{ r.base_sha[:7] }}`, head `{{ r.head_sha[:7] }}`.</sub>

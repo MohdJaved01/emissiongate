@@ -13,9 +13,8 @@ request** with the carbon delta, cost delta and evidence. The **gate** checks ev
 changes infrastructure code before merge and posts its carbon delta, with validated lower-carbon
 suggestions (`docs/GATE.md`). Humans merge, reject or acknowledge. Rejections feed back as suppression rules.
 
-Hackathon MVP. Judged on sustainability impact and measurability, agentic depth, **the agent's own
-footprint**, demo quality and innovation. Every design choice serves one of those. All data is synthetic.
-Track: Green IT (Green AI / AI energy efficiency + carbon accounting).
+Started as a hackathon MVP (Green IT track; material in `docs/hackathon/`). Now being hardened into a
+customer-run plugin (ADR-0018, `docs/ENTERPRISE_READINESS.md`); demo and test data are synthetic.
 
 ## Non-negotiable invariants
 
@@ -44,17 +43,25 @@ Violating any of these is a bug even if tests pass. Check every change against t
    model, reasoning level, prompt tokens, completion tokens (thinking included) and duration. Every tool
    call is recorded.
 9. **Budgets are hard ceilings** (`policy.yaml → ceilings`). Hitting one stops cleanly at a checkpoint.
-10. **Offline mode always works with no network, no LLM and no GitHub token.** OpenTofu providers come from
-    the local mirror (`make providers`, then `tofu init -plugin-dir`); nothing in a run downloads anything.
+10. **Offline mode always works with no network, no LLM and no GitHub token.** The gate runs with network
+    egress blocked except to the declared SCM API. OpenTofu providers come from the local mirror
+    (`make providers`, then `tofu init -plugin-dir`); nothing in a run downloads anything.
 11. **Measured vs estimated is never blurred.** If `codecarbon` falls back to a TDP estimate, the report says
     "estimated". Embodied carbon (M) is "not declared" unless the user configures it.
-12. **All data is synthetic.** Generated artefacts carry `synthetic: true`. No real account IDs, customer
-    names, client branding or real resource identifiers.
-13. **Secrets never enter files an agent can read or write.** No tokens in code, fixtures, logs, reports,
+12. **Customer data stays in the customer's boundary; nothing phones home.** Demo and test data are
+    synthetic and carry `synthetic: true`. Every published figure records its data origin (`synthetic` |
+    `customer`). No real account IDs, customer names, client branding or resource identifiers in this repo.
+13. **Short-lived credentials only** — the Actions token, OIDC federation, GitHub App installation tokens.
+    Secrets never enter files an agent can read or write: no tokens in code, fixtures, logs, reports,
     ledger payloads or `.env`. `GITHUB_TOKEN` is exported by a human in their own terminal for live mode.
 14. **The gate informs; humans decide.** It never pushes to a PR branch, never merges, and fails a check only
     at a threshold in `policy.yaml → gate`. Passing an acknowledgement-required check needs a human label with
-    a reason, recorded in the ledger. Assumed utilisation is always published as a range, labelled `assumed`.
+    a reason, recorded in the ledger; it is bound to the head commit and given by a user with write
+    permission, and approval rules beyond that come from policy (E5). Assumed utilisation is always
+    published as a range, labelled `assumed`.
+15. **Trusted inputs.** In CI, policy, suppressions, factors, prices, telemetry and tool paths come only
+    from trusted sources (action inputs, the base commit, an organisation config repository or the engine
+    package), never from the pull request's tree.
 
 ## Architecture map
 
@@ -126,6 +133,8 @@ Single test: `.venv/bin/pytest tests/unit/test_energy.py -k gpu -q`
 
 - Work milestone by milestone from `docs/BUILD_PLAN.md` — skill `milestone` (`$milestone M3` in Codex,
   `/milestone M3` in Claude Code). Do not start a milestone until the previous one's acceptance criteria pass.
+  Post-hackathon work is phased in `docs/ENTERPRISE_READINESS.md` (`/milestone E1`); an ADR marked
+  *proposed* changes no invariant until a human accepts it.
 - For anything in `core/`: write the test first with hand-checkable numbers. Golden values are in
   `docs/METHODOLOGY.md §6`; they must match to 3 decimal places.
 - Keep agents thin. Logic that could be pure belongs in `core/`.
@@ -133,13 +142,10 @@ Single test: `.venv/bin/pytest tests/unit/test_energy.py -k gpu -q`
   INTERVENTIONS.md and tests — all or none.
 - Before finishing any task: `make lint test`, then the `check-invariants` skill.
 - Changing a decision recorded in an ADR → write a new ADR that supersedes it. Don't edit history.
-- Small commits whose messages say *why*. The commit history is evidence the work happened inside the
-  hackathon window — never squash or rewrite it.
-- **Augmentation log (a submission deliverable).** After each milestone, before asking the human to
-  approve it, append one entry to `docs/augmentation-log.md` in the template given there: what was
-  attempted, the output, accepted/modified/rejected, errors found and by whom, corrective steps,
-  evidence. Name the tool honestly. Never invent or backdate an entry; record failures as they happened.
-- Today's order and cut list: `docs/BUILD_PLAN.md` → "Submission scope". It overrides the milestone order.
+- Small commits whose messages say *why*. The commit history is evidence of how the work was done —
+  never squash or rewrite it.
+- The augmentation log (`docs/hackathon/augmentation-log.md`) closed with the hackathon; add no entries.
+  Record progress in commit messages and `docs/ENTERPRISE_READINESS.md` → Progress.
 
 ## Sandbox and approvals (Codex)
 
@@ -229,7 +235,8 @@ Single test: `.venv/bin/pytest tests/unit/test_energy.py -k gpu -q`
 | Intervention templates and their HCL | `docs/INTERVENTIONS.md` |
 | Synthetic estate, traps, ground truth | `docs/SYNTHETIC_ESTATE.md` |
 | PR gate behaviour, thresholds, security | `docs/GATE.md` |
-| What to build next | `docs/BUILD_PLAN.md` |
+| What to build next | `docs/BUILD_PLAN.md`, then `docs/ENTERPRISE_READINESS.md` |
+| Gate threats and their controls | `docs/THREAT_MODEL.md` |
 | Tool setup: Codex, Claude Code, sandbox, cloud, reviews | `docs/DEVELOPING.md` |
 | Reviewer instructions | `docs/review/` |
 | Why a decision was made | `docs/adr/` |
@@ -261,9 +268,13 @@ rule gives the safe path. More specific rules live in `src/emissiongate/core/AGE
   `-plugin-dir`.
 - **Measured vs estimated (P1, invariant 11).** Flag "measured" in reports without checking the codecarbon
   tracking method.
-- **Real data (P0, invariant 12).** Flag real-looking account IDs, ARNs, customer or client names.
+- **Real data (P0, invariant 12).** Flag real-looking account IDs, ARNs, customer or client names in the
+  repo, and any code that sends customer data outside the customer's boundary.
 - **Gate overreach (P0, invariant 14).** Flag gate code that writes to a PR branch, merges, approves, fails a
   check outside the configured thresholds, accepts without the label and a reason, or publishes an assumed
   figure without its range and label. Safe path: comment, set the job result, record in the ledger.
 - **Secrets (P0, invariant 13).** Flag tokens or keys in code, fixtures, logs, reports, `.env.example`
-  values, or ledger payloads.
+  values, or ledger payloads, and long-lived credentials where a short-lived one would do.
+- **Untrusted configuration (P0, invariant 15).** Flag CI code paths that read policy, suppressions,
+  factors, prices, telemetry, `.env` or tool paths from the pull request's working tree. Safe path:
+  `load_settings(ci=True)`, the base commit via `gitrefs.read_blob`, or job inputs outside the checkout.

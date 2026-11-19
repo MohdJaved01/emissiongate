@@ -9,6 +9,7 @@ changes the job result; it is ledgered and the comment stays in the job log.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import tempfile
 import time
@@ -19,7 +20,7 @@ from pathlib import Path
 
 from emissiongate.agents import diff_collector, reporter
 from emissiongate.agents.diff_collector import Unit
-from emissiongate.config import Settings
+from emissiongate.config import Settings, UntrustedInput, check_trusted
 from emissiongate.contracts import GatePrediction, GateResult, GateSuggestion, Projection, Resource
 from emissiongate.core import energy, hcl, patches, safety
 from emissiongate.core import projection as pj
@@ -185,148 +186,233 @@ class Gate:
         repo: str = "",
         github: GitHub | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        config_from_base: bool = False,
     ) -> None:
         self.s = settings
         self.estate_dir = estate_dir
         self.base_ref, self.head_ref = base, head
         self.pr, self.repo, self.github, self.clock = pr, repo, github, clock
+        self.config_from_base = config_from_base
+
+    def _trusted_settings(self, tmp: Path, ledger: Ledger) -> tuple[Settings, dict[str, str]]:
+        """Settings with policy and suppressions from trusted sources only (THREAT_MODEL B2).
+
+        With `config_from_base`, `.emissiongate/policy.yaml` and `.emissiongate/suppressions.yaml`
+        are read from the base commit's tree (never the head's), when present; otherwise the
+        configured files apply. Every git read is ledgered (invariant 8).
+        """
+        s = self.s
+        sources = {"policy": str(s.policy_path), "suppressions": str(s.suppressions_path)}
+        if not self.config_from_base:
+            return s, sources
+        base_sha = gitrefs.rev_parse(self.estate_dir, self.base_ref)
+        ledger.append(
+            state=STATE,
+            kind="tool_call",
+            agent="diff_collector",
+            tool="git.rev_parse",
+            detail={"ref": self.base_ref, "sha": base_sha},
+        )
+        trusted = tmp / "trusted-config"
+        trusted.mkdir()
+        updates: dict[str, Path] = {}
+        for key, name in (("policy", "policy.yaml"), ("suppressions", "suppressions.yaml")):
+            path = f".emissiongate/{name}"
+            blob = gitrefs.read_blob(self.estate_dir, base_sha, path)
+            ledger.append(
+                state=STATE,
+                kind="tool_call",
+                agent="diff_collector",
+                tool="git.read_blob",
+                detail={"sha": base_sha, "path": path, "found": blob is not None},
+            )
+            if blob is not None:
+                (trusted / name).write_bytes(blob)
+                updates[f"{key}_path"] = trusted / name
+                sources[key] = f"base:{base_sha}:{path}"
+        return dataclasses.replace(s, **updates), sources
 
     def run(self) -> GateRun:
-        s = self.s
+        with tempfile.TemporaryDirectory(prefix="eg-gate-") as tmp:
+            return self._run(Path(tmp))
+
+    def _open_ledger(self, run_id: str) -> tuple[Path, Ledger]:
+        """The run's ledger, opened before anything else so a refusal is recorded too.
+
+        In CI a configured path inside the PR's checkout refuses the run (THREAT_MODEL B2). The
+        refusal is ledgered unless the runs directory itself is the untrusted path, in which case
+        nothing is written there at all.
+        """
+        untrusted = check_trusted(self.s, self.estate_dir) if self.s.ci else []
+        if any(u.startswith("runs_dir ") for u in untrusted):
+            raise UntrustedInput("; ".join(untrusted))
+        run_dir = self.s.runs_dir / run_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        ledger = Ledger(run_dir / "ledger.sqlite", run_id, self.clock)
+        if untrusted:
+            ledger.append(
+                state="REFUSED",
+                kind="error",
+                payload={"untrusted_inputs": untrusted},
+                detail={"untrusted_inputs": len(untrusted), "ci": True},
+            )
+            ledger.close()
+            raise UntrustedInput("; ".join(untrusted))
+        return run_dir, ledger
+
+    def _run(self, tmp: Path) -> GateRun:
         started = self.clock()
         t0 = time.monotonic()
         run_id = f"{started.strftime('%Y%m%dT%H%M%SZ')}-gate-pr{self.pr}"
-        run_dir = s.runs_dir / run_id
-        run_dir.mkdir(parents=True, exist_ok=True)
+        run_dir, ledger = self._open_ledger(run_id)
+        s, config_sources = self._trusted_settings(tmp, ledger)
         tracker = Tracker(s.country_iso)
         tracker.start()
         policy = Policy.from_docs(s.policy(), s.suppressions())
         prices_path = s.data_dir / "prices_synthetic.json"
         prices = json.loads(prices_path.read_text(encoding="utf-8")) if prices_path.exists() else {}
         c = _Ctx(
-            ledger=Ledger(run_dir / "ledger.sqlite", run_id, self.clock),
+            ledger=ledger,
             budget=Budget(policy.ceilings),
             policy=policy,
             factors=Factors.load(s.factors_dir / FACTORS_FILE),
             prices=prices,
         )
-        cfg = tf.TofuConfig(
-            bin=s.tofu_bin, plugin_dir=s.tofu_plugin_dir, data_dir=s.cwd / ".eg-cache" / "tofu-data"
-        )
+        # In CI the tofu data directory is per run and outside the checkout (THREAT_MODEL B2, B3).
+        tofu_data = tmp / "tofu-data" if s.ci else s.cwd / ".eg-cache" / "tofu-data"
+        cfg = tf.TofuConfig(bin=s.tofu_bin, plugin_dir=s.tofu_plugin_dir, data_dir=tofu_data)
         c.ledger.append(
             state=STATE,
             kind="transition",
-            detail={"pr": self.pr, "repo": self.repo, "base": self.base_ref, "head": self.head_ref},
+            detail={
+                "pr": self.pr,
+                "repo": self.repo,
+                "base": self.base_ref,
+                "head": self.head_ref,
+                "ci": s.ci,
+                "policy_source": config_sources["policy"],
+                "suppressions_source": config_sources["suppressions"],
+            },
         )
-        with tempfile.TemporaryDirectory(prefix="eg-gate-") as tmp:
-            base_dir, head_dir = Path(tmp) / "base", Path(tmp) / "head"
-            base_sha = gitrefs.export_tree(self.estate_dir, self.base_ref, base_dir)
-            head_sha = gitrefs.export_tree(self.estate_dir, self.head_ref, head_dir)
-            head_time = gitrefs.commit_time(self.estate_dir, head_sha)
-            for side, sha in (("base", base_sha), ("head", head_sha)):
-                c.ledger.append(
-                    state=STATE,
-                    kind="tool_call",
-                    agent="diff_collector",
-                    tool="git.archive",
-                    detail={"side": side, "sha": sha},
-                )
-            self._head_time = datetime.fromisoformat(head_time)
-            finish = self._finisher(c, run_dir, tracker, t0, started, base_sha, head_sha)
+        base_dir, head_dir = tmp / "base", tmp / "head"
+        base_tree = gitrefs.export_tree(self.estate_dir, self.base_ref, base_dir)
+        head_tree = gitrefs.export_tree(self.estate_dir, self.head_ref, head_dir)
+        base_sha, head_sha = base_tree.sha, head_tree.sha
+        for side, tree in (("base", base_tree), ("head", head_tree)):
+            c.ledger.append(
+                state=STATE,
+                kind="tool_call",
+                agent="diff_collector",
+                tool="git.export_tree",
+                detail={"side": side, "sha": tree.sha, "files": len(tree.files)},
+            )
+        finish = self._finisher(c, run_dir, tracker, t0, started, base_sha, head_sha)
 
-            unsafe = [
-                f"{side}/{p}"
-                for side, d in (("base", base_dir), ("head", head_dir))
-                for p in safety.problems(
-                    {f.name: f.read_text(encoding="utf-8") for f in sorted(d.glob("*.tf"))}
-                )
-            ]
-            if unsafe:
-                c.ledger.append(
-                    state=STATE,
-                    kind="decision",
-                    agent="diff_collector",
-                    payload={"problems": unsafe},
-                    detail={"not_planned": True, "problems": len(unsafe)},
-                )
-                reason = "configuration not planned for safety: " + "; ".join(unsafe[:3])
-                return finish("not_evaluated", [], [], [], reason=reason)
+        # Refused tree entries (symlinks, submodules) and every file OpenTofu loads, in every
+        # directory, go through the screen (THREAT_MODEL B1).
+        unsafe = [
+            f"{side}/{p}"
+            for side, tree in (("base", base_tree), ("head", head_tree))
+            for p in tree.refused
+        ] + [
+            f"{side}/{p}"
+            for side, d, tree in (("base", base_dir, base_tree), ("head", head_dir, head_tree))
+            for p in safety.problems(
+                {
+                    f: (d / f).read_text(encoding="utf-8", errors="replace")
+                    for f in tree.files
+                    if safety.loaded_by_tofu(f)
+                }
+            )
+        ]
+        if unsafe:
+            c.ledger.append(
+                state=STATE,
+                kind="decision",
+                agent="diff_collector",
+                payload={"problems": unsafe},
+                detail={"not_planned": True, "problems": len(unsafe)},
+            )
+            reason = "configuration not planned for safety: " + "; ".join(unsafe[:3])
+            return finish("not_evaluated", [], [], [], reason=reason)
 
-            views: dict[str, diff_collector.PlanView] = {}
-            with tf.Workspace(cfg, base_dir) as ws_base, tf.Workspace(cfg, head_dir) as ws_head:
-                for side, ws in (("base", ws_base), ("head", ws_head)):
-                    error: str | None = None
-                    plan = None
-                    try:
-                        c.budget.check()
-                        result, plan = ws.plan_json()
-                        if plan is None:
-                            error = result.stderr_tail
-                    except tf.TofuError as exc:
-                        error = str(exc)
-                    except BudgetExceeded as exc:
-                        return finish("not_evaluated", [], [], [], reason=f"ceiling {exc.ceiling}")
-                    _ledger_history(c, ws, 0, "diff_collector", side=side)
-                    if plan is None:
-                        c.ledger.append(
-                            state=STATE,
-                            kind="error",
-                            agent="diff_collector",
-                            payload={"side": side, "stderr_tail": error or ""},
-                            detail={"side": side, "plan_failed": True},
-                        )
-                        return finish(
-                            "not_evaluated", [], [], [], reason=_short(side, error or "plan failed")
-                        )
-                    views[side] = diff_collector.read_plan(plan)
-                changes = diff_collector.pair(views["base"], views["head"])
-                relevant = [ch for ch in changes if ch.carbon_relevant]
-                if not relevant:
-                    return finish("pass", changes, [], [], no_comment=True)
-                projections: list[Projection] = []
-                observed: dict[str, pj.Observed | None] = {}
-                gate_cfg = policy.gate
-                for ch in relevant:
-                    b = views["base"].units.get(ch.address)
-                    h = views["head"].units.get(ch.address)
-                    unit = h or b
-                    assert unit is not None
-                    gaps = sorted({*(b.missing if b else ()), *(h.missing if h else ())})
-                    if gaps or not unit.region:
-                        reason = "unknown: " + ", ".join(gaps or ["region"])
-                        projections.append(_not_quantified(ch.address, reason))
-                        continue
-                    if unit.tf_type in diff_collector.STORAGE_TYPES:
-                        projections.append(_storage_projection(c, ch.address, b, h))
-                        continue
-                    obs = _observed(c, s.data_dir, unit.name) if b is not None else None
-                    observed[ch.address] = obs
-                    projections.append(
-                        pj.project(
-                            ch.address,
-                            _state(b),
-                            _state(h),
-                            obs,
-                            c.factors,
-                            gate_cfg,
-                            c.prices.get("instance_usd_per_hour_synthetic"),
-                        )
-                    )
-                event = c.ledger.append(
-                    state=STATE,
-                    kind="decision",
-                    agent="quantifier",
-                    payload=[p.model_dump(mode="json") for p in projections],
-                    detail={"projections": len(projections), "tier": "annual"},
-                )
-                self._projection_event = event.seq
+        views: dict[str, diff_collector.PlanView] = {}
+        with tf.Workspace(cfg, base_dir) as ws_base, tf.Workspace(cfg, head_dir) as ws_head:
+            for side, ws in (("base", ws_base), ("head", ws_head)):
+                error: str | None = None
+                plan = None
                 try:
-                    suggestions = self._suggest(
-                        c, ws_head, head_dir, views["head"], projections, observed
-                    )
+                    c.budget.check()
+                    result, plan = ws.plan_json()
+                    if plan is None:
+                        error = result.stderr_tail
+                except tf.TofuError as exc:
+                    error = str(exc)
                 except BudgetExceeded as exc:
-                    c.notes.append(f"suggestions stopped at ceiling {exc.ceiling}")
-                    suggestions = []
+                    return finish("not_evaluated", [], [], [], reason=f"ceiling {exc.ceiling}")
+                _ledger_history(c, ws, 0, "diff_collector", side=side)
+                if plan is None:
+                    c.ledger.append(
+                        state=STATE,
+                        kind="error",
+                        agent="diff_collector",
+                        payload={"side": side, "stderr_tail": error or ""},
+                        detail={"side": side, "plan_failed": True},
+                    )
+                    return finish(
+                        "not_evaluated", [], [], [], reason=_short(side, error or "plan failed")
+                    )
+                views[side] = diff_collector.read_plan(plan)
+            changes = diff_collector.pair(views["base"], views["head"])
+            relevant = [ch for ch in changes if ch.carbon_relevant]
+            if not relevant:
+                # Coverage stays visible: no comment only when nothing changed at all (E1).
+                seen = any(ch.change != "unchanged" for ch in changes)
+                return finish("pass", changes, [], [], no_comment=not seen)
+            projections: list[Projection] = []
+            observed: dict[str, pj.Observed | None] = {}
+            gate_cfg = policy.gate
+            for ch in relevant:
+                b = views["base"].units.get(ch.address)
+                h = views["head"].units.get(ch.address)
+                unit = h or b
+                assert unit is not None
+                gaps = sorted({*(b.missing if b else ()), *(h.missing if h else ())})
+                if gaps or not unit.region:
+                    reason = "unknown: " + ", ".join(gaps or ["region"])
+                    projections.append(_not_quantified(ch.address, reason))
+                    continue
+                if unit.tf_type in diff_collector.STORAGE_TYPES:
+                    projections.append(_storage_projection(c, ch.address, b, h))
+                    continue
+                obs = _observed(c, s.data_dir, unit.name) if b is not None else None
+                observed[ch.address] = obs
+                projections.append(
+                    pj.project(
+                        ch.address,
+                        _state(b),
+                        _state(h),
+                        obs,
+                        c.factors,
+                        gate_cfg,
+                        c.prices.get("instance_usd_per_hour_synthetic"),
+                    )
+                )
+            event = c.ledger.append(
+                state=STATE,
+                kind="decision",
+                agent="quantifier",
+                payload=[p.model_dump(mode="json") for p in projections],
+                detail={"projections": len(projections), "tier": "annual"},
+            )
+            self._projection_event = event.seq
+            try:
+                suggestions = self._suggest(
+                    c, ws_head, head_dir, views["head"], projections, observed
+                )
+            except BudgetExceeded as exc:
+                c.notes.append(f"suggestions stopped at ceiling {exc.ceiling}")
+                suggestions = []
         return finish("pass", changes, projections, suggestions)
 
     # ---- suggestions -----------------------------------------------------------------------
@@ -564,7 +650,7 @@ class Gate:
         if status == "ack_required" and self.github is not None and self.pr:
             try:
                 accepted_by, accepted_reason = self.github.acceptance(
-                    self.pr, gate_cfg["ack_label"], since=self._head_time
+                    self.pr, gate_cfg["ack_label"], head_sha=head_sha
                 )
                 c.ledger.append(
                     state=STATE,
@@ -573,6 +659,7 @@ class Gate:
                     tool="github.acceptance",
                     detail={
                         "label": gate_cfg["ack_label"],
+                        "head_sha": head_sha,
                         "found": bool(accepted_by),
                         "reason_found": bool(accepted_reason),
                     },

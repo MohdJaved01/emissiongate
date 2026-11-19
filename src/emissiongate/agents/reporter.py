@@ -5,6 +5,7 @@ from __future__ import annotations
 from emissiongate.contracts import GateResult, Projection, ResourceChange
 from emissiongate.core.factors import Factors
 from emissiongate.report.render import published_delta, render_markdown
+from emissiongate.report.sanitize import checked
 from emissiongate.tools.github import MARKER
 
 STATUS = {
@@ -19,12 +20,30 @@ STATUS = {
 def _hours(text: str | None) -> str:
     if text is None:
         return "?"
-    h = float(text)
+    try:
+        h = float(text)
+    except ValueError:
+        return text
     return "24×7" if abs(h - 8760.0) < 0.5 else f"{h:,.0f} h/yr"
 
 
+_KINDS = {
+    "instance_type": "instance_type",
+    "region": "region",
+    "count": "number",
+    "size_gb": "number",
+    "hours_per_year": "number",
+    "type": "volume_type",
+}
+
+
+def _checked(attrs: dict[str, str]) -> dict[str, str]:
+    """Plan attribute values in their expected formats, for display (THREAT_MODEL B5)."""
+    return {k: checked(_KINDS[k], v) if k in _KINDS else v for k, v in attrs.items()}
+
+
 def describe(c: ResourceChange) -> str:
-    a, b = c.after, c.before
+    a, b = _checked(c.after), _checked(c.before)
     if c.change == "added":
         if "instance_type" in a:
             hours = _hours(a.get("hours_per_year"))
@@ -103,6 +122,7 @@ def gate_comment(
     kwh = sum(p.kwh_yr_delta for p in result.projections if p.quantified)
     usd = sum(p.usd_synthetic_yr_delta for p in result.projections if p.quantified)
     net = sum(r["delta"] for r in rows)
+    seen = sum(1 for c in result.changes if c.change != "unchanged")
     return render_markdown(
         "gate_comment.md.j2",
         marker=MARKER,
@@ -117,6 +137,7 @@ def gate_comment(
         suggestions=result.suggestions,
         not_quantified=not_quantified,
         other=other,
+        seen=seen,
         gate=gate_cfg,
         reason=reason,
         factors_source=factors.source,

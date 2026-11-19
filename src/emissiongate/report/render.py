@@ -9,6 +9,8 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
+from emissiongate.report import sanitize
+
 TEMPLATES = Path(__file__).parent / "templates"
 MINUS = "−"
 
@@ -50,6 +52,9 @@ def env(autoescape: bool) -> Environment:
         keep_trailing_newline=True,
     )
     e.filters.update(kg=kg, signed=signed, pct=pct, usd=usd)
+    # untrusted text in Markdown output (THREAT_MODEL B5)
+    e.filters.update(text=sanitize.text, code=sanitize.code, fence=sanitize.fence)
+    e.filters["checked_login"] = lambda v: sanitize.checked("login", v)
     e.globals.update(published_delta=published_delta)
     return e
 

@@ -1,0 +1,15 @@
+EmissionGate
+Copyright 2026 The EmissionGate authors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes data derived from Cloud Carbon Footprint (Thoughtworks), licensed under the
+Apache License, Version 2.0: energy coefficients, PUE, replication factors, regional emission factors
+and the instance-to-processor mapping vendored in factors/ (upstream commit recorded in
+factors/README.md and THIRD_PARTY.md).
+
+This product includes a snapshot of data from the UK Carbon Intensity API (National Energy System
+Operator), licensed under the Creative Commons Attribution 4.0 International licence (CC BY 4.0), in
+fixtures/grid/.
+
+Other third-party components and their licences are listed in THIRD_PARTY.md.

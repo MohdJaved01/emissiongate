@@ -46,7 +46,7 @@ ceilings:
 gate:                                  # PR gate thresholds (docs/GATE.md). Net change per PR, central value.
   warn_kg_co2e_yr: 25.0
   ack_kg_co2e_yr: 100.0
-  ack_label: eg/carbon-accepted        # a human adds it with a comment giving the reason
+  ack_label: eg/carbon-accepted        # plus a review on the head commit giving the reason
   assumed_utilisation_band: [0.10, 0.90]
   assumed_gpu_utilisation: 0.50        # no published default; stated as an assumption
   max_suggestions: 3

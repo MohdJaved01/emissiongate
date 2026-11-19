@@ -30,7 +30,7 @@ reports (a PR comment and a check, not a new PR).
 |---|---|---|
 | decrease, or below `warn_kg_co2e_yr` | ✅ pass | nothing |
 | between `warn` and `ack` thresholds | ✅ pass, with a warning in the comment | reviewer reads it |
-| at or above `ack_kg_co2e_yr` | ❌ "carbon acknowledgement required" | apply a suggestion, **or** add the label `eg/carbon-accepted` and a comment giving the reason → the check re-runs and passes, recording who accepted and why |
+| at or above `ack_kg_co2e_yr` | ❌ "carbon acknowledgement required" | apply a suggestion, **or** add the label `eg/carbon-accepted` **and** submit a pull-request review (Comment or Approve) on the latest commit giving the reason; the same person labels and reviews, and needs write access → the check re-runs and passes, recording who accepted and why. A new push needs a new review (E1) |
 | plan failed or nothing quantifiable | ⚪ pass, "not evaluated" with the reason | nothing — other CI owns syntax errors |
 
 4. The gate never pushes to the branch, never merges, and never decides. Whether a failing check blocks
@@ -133,7 +133,7 @@ not, error against the central value, per basis (`assumed`, `observed_projected`
 **Expiry is a hard limit.** GitHub deletes artefacts after at most 90 days on public repositories, and
 from 1 October 2026 check runs follow the same retention. So `sync-feedback` must run within 90 days of
 merge; a prediction that expired is listed as `prediction_expired`, never dropped silently. The PR
-comment and the `eg/carbon-accepted` label event are not Actions data and do not expire, so the human
+comment, the `eg/carbon-accepted` label and the acknowledging review are not Actions data and do not expire, so the human
 acceptance record outlives the artefact. The production path copies predictions into the S3 ledger at
 merge instead (ARCHITECTURE §7, production path).
 

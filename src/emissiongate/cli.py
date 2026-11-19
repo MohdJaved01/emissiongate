@@ -264,22 +264,53 @@ def gate(
     pr: int = typer.Option(0, help="Pull request number (with --post)."),
     repo: str = typer.Option("", help="owner/name (with --post)."),
     post: bool = typer.Option(False, "--post", help="Upsert the PR comment; exit 1 if ack needed."),
+    ci: bool = typer.Option(
+        False,
+        "--ci",
+        help="Trusted inputs only: no .env files, no policy from the working directory, and no "
+        "configured path inside --estate-dir (THREAT_MODEL B2). Use it in every CI workflow.",
+    ),
+    config_from_base: bool = typer.Option(
+        False,
+        "--config-from-base",
+        help="Read .emissiongate/policy.yaml and suppressions.yaml from the base commit.",
+    ),
 ) -> None:
     """Check a pull request's carbon delta before merge (GATE.md). Informs; humans decide."""
+    from emissiongate.config import UntrustedInput
     from emissiongate.orchestrator.gate import Gate
     from emissiongate.tools.github import GitHub
 
-    settings = load_settings()
+    settings = load_settings(ci=ci)
+    if not ci and os.environ.get("GITHUB_ACTIONS") == "true":
+        console.print(
+            "[yellow]warning:[/yellow] running in GitHub Actions without --ci: .env and policy "
+            "files in the working directory are trusted. See docs/THREAT_MODEL.md (B2)."
+        )
     github = None
     if post:
         if not pr or not repo:
             console.print("--post needs --pr and --repo")
             raise typer.Exit(2)
         github = GitHub(os.environ.get("GITHUB_TOKEN", ""), repo)
-    result = Gate(settings, estate_dir.resolve(), base, head, pr, repo, github).run()
+    gate_run = Gate(
+        settings,
+        estate_dir.resolve(),
+        base,
+        head,
+        pr,
+        repo,
+        github,
+        config_from_base=config_from_base,
+    )
+    try:
+        result = gate_run.run()
+    except UntrustedInput as exc:
+        console.print(f"refused (workflow configuration): {exc}", markup=False)
+        raise typer.Exit(2) from exc
     r = result.result
     if result.comment is None:
-        console.print("No carbon-relevant change: no comment.")
+        console.print("No resource changes: no comment.")
     else:
         console.print(result.comment, markup=False, highlight=False)
     console.print(

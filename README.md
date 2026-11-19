@@ -5,6 +5,12 @@ request: it finds waste in running infrastructure and drafts the fix as a PR, an
 infrastructure PR before merge and posts its kgCO2e delta with validated lower-carbon suggestions.
 Humans decide; the agent cannot apply, merge or delete anything.
 
+> [!WARNING]
+> **Demo, not for production use.** This is a hackathon build. Until 1.0 it should not be a required
+> check or run on repositories with real infrastructure: see
+> [docs/ENTERPRISE_READINESS.md](docs/ENTERPRISE_READINESS.md) for the plan and
+> [SECURITY.md](SECURITY.md) for reporting a vulnerability.
+
 > **Demo video (agent running):** [watch on SharePoint](https://nagarro-my.sharepoint.com/:f:/p/mohd_javed/IgDLEbuxd7uKS6Ztnto26CKDASv_R0VuWm8bkV9GhcYQfNA?e=Vgxjut)
 >
 > **Live gate example:** [emissiongate-demo-estate PR #1](https://github.com/MohdJaved01/emissiongate-demo-estate/pull/1) (a PR adding 2 × g5.2xlarge, with the gate's comment). At +683.5 kgCO2e/yr it
@@ -21,14 +27,14 @@ Humans decide; the agent cannot apply, merge or delete anything.
 | Deliverable | Where |
 |---|---|
 | Agent design document (architecture, decision points, oversight, failure handling) | [docs/AGENT_DESIGN.md](docs/AGENT_DESIGN.md) |
-| Pitch deck (10 slides) | [docs/EmissionGate-pitch.pdf](docs/EmissionGate-pitch.pdf) · [.pptx](docs/EmissionGate-pitch.pptx) |
-| Augmentation log (AI usage across the lifecycle) | [docs/augmentation-log.md](docs/augmentation-log.md) |
+| Pitch deck (10 slides) | [docs/hackathon/EmissionGate-pitch.pdf](docs/hackathon/EmissionGate-pitch.pdf) · [.pptx](docs/hackathon/EmissionGate-pitch.pptx) |
+| Augmentation log (AI usage across the lifecycle) | [docs/hackathon/augmentation-log.md](docs/hackathon/augmentation-log.md) |
 | How the PR gate runs, step by step, and how another repo adopts it | [docs/USING_THE_GATE.md](docs/USING_THE_GATE.md) |
 | Demo video | link above |
 
 **Built with:** Claude Code (all code in this repository) and Claude (design and documents). Codex licences
 arrived late in the hackathon; Codex built and checked an early scaffold prototype, then the submission was
-built with Claude Code. Details: [augmentation log](docs/augmentation-log.md) ·
+built with Claude Code. Details: [augmentation log](docs/hackathon/augmentation-log.md) ·
 [ADR-0016](docs/adr/0016-claude-code-builds-submission.md).
 
 ## The problem
@@ -245,14 +251,14 @@ policy.yaml         guardrails, thresholds, gate settings
 tofu/versions.tf    provider constraint for the mirror and the estate
 estate-repo/        workflow, README and .gitignore of the demo estate repository
 scripts/            estate-repo builder, agent-file checker
-docs/               design document, pitch deck, augmentation log, methodology, ADRs, sample run
+docs/               design document, methodology, ADRs, sample run; hackathon/ deck, log
 tests/              unit, golden values, ground truth (sweep and gate scenarios)
 ```
 
 More: [Architecture](docs/ARCHITECTURE.md) · [Methodology](docs/METHODOLOGY.md) · [PR gate](docs/GATE.md) ·
 [Using the gate](docs/USING_THE_GATE.md) ·
 [Interventions](docs/INTERVENTIONS.md) · [Data contracts](docs/DATA_CONTRACTS.md) ·
-[Build plan](docs/BUILD_PLAN.md) · [Decisions](docs/adr/README.md) · [Demo script](docs/DEMO_SCRIPT.md) ·
+[Build plan](docs/BUILD_PLAN.md) · [Decisions](docs/adr/README.md) · [Demo script](docs/hackathon/DEMO_SCRIPT.md) ·
 [Developing with Codex or Claude Code](docs/DEVELOPING.md) · [Third-party components](THIRD_PARTY.md)
 
 ## Licence

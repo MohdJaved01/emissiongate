@@ -29,7 +29,7 @@ with the comment showing (expected: +683.5 kgCO2e/yr, range 263.1–1,103.9, ack
 Cut for today, kept as "designed, not built" in the README: M1.5 bake-off, M8 live PRs and feedback
 sync, M9 live grid API, calibration loop, `make compare`.
 
-After **every** milestone: run `make lint test`, append an entry to `docs/augmentation-log.md`, commit,
+After **every** milestone: run `make lint test`, append an entry to `docs/hackathon/augmentation-log.md`, commit,
 and ask the human to approve before ticking the box.
 
 Review: after M3, M6 and M6.5 run the invariant-reviewer subagent (`.claude/agents/`, same prompt as
@@ -224,6 +224,6 @@ payback ratio shown for proposed and merged separately.
 - `emissiongate score` prints `Score` and writes `runs/<id>/score.json`.
 - `make compare`: offline vs local on the same seed — precision, recall, first-attempt plan success,
   energy, tokens. This table is the "does the LLM earn its keep" slide.
-- README results table filled from real runs. Rehearse DEMO_SCRIPT.md.
+- README results table filled from real runs. Rehearse DEMO_SCRIPT.md (now `docs/hackathon/`).
 
 **Done when:** a clean clone → `make setup demo-offline score` works in under 10 minutes on a laptop.
