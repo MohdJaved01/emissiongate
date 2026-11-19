@@ -25,3 +25,4 @@ Short, immutable records. To change a decision, add a new ADR that supersedes th
 | [0019](0019-telemetry-read-path.md) | Telemetry and billing read from customer-staged exports in v1 | accepted |
 | [0020](0020-invariants-for-customer-data.md) | Invariants for customer data, CI egress and short-lived credentials | accepted; amends AGENTS.md invariants |
 | [0021](0021-support-matrix-and-compatibility.md) | Support matrix, compatibility contract and v1 targets | accepted |
+| [0022](0022-gate-fails-closed-when-it-cannot-trust-its-result.md) | The gate fails closed when it cannot trust or read its own result | proposed; clarifies invariants 6 and 14 |

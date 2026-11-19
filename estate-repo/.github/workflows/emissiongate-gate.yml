@@ -1,13 +1,15 @@
-# EmissionGate PR gate (docs/GATE.md, ADR-0015) for the synthetic estate repository.
-# Deterministic, no LLM, no secrets beyond the ephemeral GITHUB_TOKEN Actions provides.
-# It comments and sets this job's result; it never pushes to the PR branch, approves or merges.
+# EmissionGate PR gate, step 1 of 2: evaluate (docs/GATE.md §5, ADR-0015) — unprivileged.
+# Deterministic, no LLM, and no token: this job plans the pull request's code, so it gets
+# `contents: read` and nothing else, and never sees GITHUB_TOKEN. It writes evaluation.json as an
+# artefact. Step 2 (emissiongate-publish.yml, a workflow_run workflow) reads that artefact as
+# untrusted data, looks up any acknowledgement, comments, and sets the `EmissionGate / carbon` check.
+# Works the same for fork pull requests. Make `EmissionGate / carbon` the required check, not this job.
 #
 # Trust layout (docs/THREAT_MODEL.md, B2): the pull request is checked out into estate/ and is the
 # only untrusted input. The engine, its provider mirror, telemetry, policy and outputs all live
 # outside estate/, and `--ci` refuses to run if any of them is configured inside it.
 # Actions are pinned by full SHA (Dependabot proposes updates). Still to do before this is a
-# production reference (ENTERPRISE_READINESS E1/E7): pin the engine to a release, and use the
-# two-workflow pattern so the token never shares a process with planning (fork PRs too).
+# production reference (ENTERPRISE_READINESS E1/E2): pin the engine to a release, restrict egress.
 name: emissiongate-gate
 
 on:
@@ -17,20 +19,18 @@ on:
   pull_request_review:            # an acknowledgement is a review on the head commit (THREAT_MODEL B4)
     types: [submitted, dismissed]
 
-permissions: {}                   # nothing by default; the job asks for what it needs
+permissions: {}                   # nothing by default
 
 concurrency:
   group: emissiongate-gate-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  gate:
+  evaluate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      contents: read
-      pull-requests: write        # post / update the one sticky comment; read reviews
-      issues: read                # read the eg/carbon-accepted label
+      contents: read              # nothing else: no token reaches the planning process
     env:
       EG_COUNTRY_ISO: USA
     steps:
@@ -81,9 +81,8 @@ jobs:
       - name: Synthetic telemetry for observed utilisation (outside the checkout)
         run: emissiongate estate --telemetry-only --seed 42 --out "$EG_DATA_DIR"
 
-      - name: Carbon gate
+      - name: Evaluate (plans base and head; no token, never posts)
         env:
-          GITHUB_TOKEN: ${{ github.token }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -92,9 +91,8 @@ jobs:
           --estate-dir estate
           --base "$BASE_SHA" --head "$HEAD_SHA"
           --pr "$PR_NUMBER" --repo "$GITHUB_REPOSITORY"
-          --post
 
-      - name: Keep the prediction and ledger (calibration loop, GATE §7)
+      - name: Keep the evaluation, prediction and ledger (read by step 2; calibration, GATE §7)
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

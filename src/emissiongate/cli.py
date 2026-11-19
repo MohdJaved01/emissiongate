@@ -256,6 +256,24 @@ def score(
         raise typer.Exit(1)
 
 
+def _print_untrusted(body: str) -> None:
+    """Print text that holds PR-controlled strings (THREAT_MODEL B5).
+
+    In GitHub Actions, workflow commands inside it (`::error::`, `::add-mask::`, ...) are switched
+    off while it prints.
+    """
+    import secrets
+
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        console.print(body, markup=False, highlight=False)
+        return
+    token = secrets.token_hex(16)
+    print(f"::stop-commands::{token}", flush=True)
+    console.print(body, markup=False, highlight=False)
+    console.file.flush()
+    print(f"::{token}::", flush=True)
+
+
 @app.command()
 def gate(
     estate_dir: Path = typer.Option(..., help="Git checkout of the infrastructure repo."),
@@ -292,6 +310,12 @@ def gate(
         if not pr or not repo:
             console.print("--post needs --pr and --repo")
             raise typer.Exit(2)
+        if ci:
+            console.print(
+                "[yellow]warning:[/yellow] --ci --post holds the token in the process that plans "
+                "the pull request. Use the two-step gate instead: `gate --ci` without a token, "
+                "then `gate-publish` in a separate job (docs/GATE.md §5, THREAT_MODEL B5)."
+            )
         github = GitHub(os.environ.get("GITHUB_TOKEN", ""), repo)
     gate_run = Gate(
         settings,
@@ -312,7 +336,7 @@ def gate(
     if result.comment is None:
         console.print("No resource changes: no comment.")
     else:
-        console.print(result.comment, markup=False, highlight=False)
+        _print_untrusted(result.comment)
     console.print(
         f"[bold]gate status: {r.status}[/bold] net {r.net_kg_co2e_yr:+.1f} kgCO2e/yr "
         f"(range {r.net_kg_co2e_yr_low:+.1f} to {r.net_kg_co2e_yr_high:+.1f}); "
@@ -321,6 +345,65 @@ def gate(
     if result.url:
         console.print(f"comment: {result.url}")
     raise typer.Exit(result.exit_code)
+
+
+@app.command("gate-publish")
+def gate_publish(
+    evaluation: Path = typer.Option(
+        ..., help="The evaluate job's downloaded artefact: a directory, or evaluation.json."
+    ),
+    repo: str = typer.Option(..., help="owner/name: github.repository."),
+    head_sha: str = typer.Option(
+        ..., "--head-sha", help="Trusted head commit: github.event.workflow_run.head_sha."
+    ),
+    pr: int = typer.Option(
+        0, help="Trusted PR number when the event has one; otherwise read from the artefact."
+    ),
+    config_repo: Path | None = typer.Option(
+        None,
+        help="Checkout of the default branch; .emissiongate/policy.yaml and suppressions.yaml "
+        "are read from its --config-ref commit.",
+    ),
+    config_ref: str = typer.Option("HEAD", help="Commit of --config-repo to read config from."),
+    base_branch: str = typer.Option(
+        ...,
+        "--base-branch",
+        help="Trusted default branch (github.event.repository.default_branch); every open PR on "
+        "the commit must target it.",
+    ),
+) -> None:
+    """Publish an evaluation: comment and check run, from a job that never runs PR code."""
+    import re
+
+    from emissiongate.orchestrator.publish import Publisher
+    from emissiongate.report.sanitize import text
+    from emissiongate.tools.github import GitHub
+
+    if not re.fullmatch(r"[0-9a-f]{40}", head_sha):
+        console.print("--head-sha must be a full 40-character commit SHA")
+        raise typer.Exit(2)
+    settings = load_settings(ci=True)
+    github = GitHub(os.environ.get("GITHUB_TOKEN", ""), repo)
+    run = Publisher(
+        settings,
+        evaluation.resolve(),
+        repo,
+        head_sha,
+        github,
+        base_branch,
+        pr,
+        config_repo.resolve() if config_repo else None,
+        config_ref,
+    ).run()
+    if run.problem:
+        console.print(f"evaluation refused: {text(run.problem)}", markup=False)
+    if run.comment:
+        _print_untrusted(run.comment)
+    console.print(f"[bold]gate status: {run.status}[/bold] check: {run.conclusion}")
+    for label, url in (("comment", run.url), ("check", run.check_url)):
+        if url:
+            console.print(f"{label}: {url}")
+    raise typer.Exit(run.exit_code)
 
 
 @app.command("sync-feedback")

@@ -1,5 +1,6 @@
-"""GitHub REST via httpx (ADR-0011). The gate only reads labels, reviews, permissions and comments,
-and upserts one comment. It never pushes, approves or merges (AGENTS.md invariant 14).
+"""GitHub REST via httpx (ADR-0011). The gate reads the pull request, labels, reviews, permissions
+and comments; it writes one sticky comment and one check run per head commit. It never pushes,
+approves or merges (AGENTS.md invariant 14).
 
 The token comes from the environment of the process (GitHub Actions' ephemeral GITHUB_TOKEN, or a
 human's terminal). It is never written to a file, log, report or ledger (invariant 13).
@@ -15,6 +16,7 @@ API = "https://api.github.com"
 MARKER = "<!-- emissiongate-gate -->"
 ACK_PERMISSIONS = frozenset({"admin", "maintain", "write"})
 ACK_REVIEW_STATES = frozenset({"APPROVED", "COMMENTED"})
+CHECK_CONCLUSIONS = frozenset({"success", "failure", "neutral"})
 
 
 class GitHubError(RuntimeError):
@@ -81,6 +83,16 @@ class GitHub:
         ]
         return added[-1] if added else None
 
+    def pull(self, pr: int) -> dict:
+        return dict(self._request("GET", f"/repos/{self.repo}/pulls/{pr}").json())
+
+    def commit_pulls(self, sha: str) -> list[dict]:
+        """Pull requests associated with a commit (open PRs whose head it is, among others)."""
+        return self._paged(f"/repos/{self.repo}/commits/{sha}/pulls")
+
+    def pull_files(self, pr: int) -> list[dict]:
+        return self._paged(f"/repos/{self.repo}/pulls/{pr}/files")
+
     def reviews(self, pr: int) -> list[dict]:
         return self._paged(f"/repos/{self.repo}/pulls/{pr}/reviews")
 
@@ -127,7 +139,7 @@ class GitHub:
             return None, None
         return login, theirs[-1]["body"].strip()  # the API lists reviews oldest first
 
-    # ---- the only write ------------------------------------------------------------------------
+    # ---- the only writes -----------------------------------------------------------------------
 
     def upsert_comment(self, pr: int, body: str) -> str:
         if MARKER not in body:
@@ -140,4 +152,23 @@ class GitHub:
                 return str(resp.json()["html_url"])
         path = f"/repos/{self.repo}/issues/{pr}/comments"
         resp = self._request("POST", path, json={"body": body})
+        return str(resp.json()["html_url"])
+
+    def create_check_run(
+        self, head_sha: str, name: str, conclusion: str, title: str, summary: str
+    ) -> str:
+        """A completed check run on `head_sha` (needs `checks: write`)."""
+        if conclusion not in CHECK_CONCLUSIONS:
+            raise GitHubError(f"unsupported check conclusion {conclusion!r}")
+        resp = self._request(
+            "POST",
+            f"/repos/{self.repo}/check-runs",
+            json={
+                "name": name,
+                "head_sha": head_sha,
+                "status": "completed",
+                "conclusion": conclusion,
+                "output": {"title": title[:200], "summary": summary[:60000]},
+            },
+        )
         return str(resp.json()["html_url"])

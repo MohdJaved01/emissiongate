@@ -16,7 +16,7 @@ reports (a PR comment and a check, not a new PR).
 ## 1. How it behaves — one pull request, start to finish
 
 1. An engineer opens or updates a PR on the infrastructure repo that touches `*.tf`.
-2. Within about a minute the **EmissionGate** check runs and posts one comment (updated in place on every
+2. Within about a minute the **`EmissionGate / carbon`** check is set and one comment is posted (updated in place on every
    push, never a new comment per push):
    - the net change in kWh/yr and kgCO2e/yr, and synthetic cost, for the PR as a whole
    - a row per changed resource: before, after, delta, and whether utilisation was **observed** (existing
@@ -31,7 +31,7 @@ reports (a PR comment and a check, not a new PR).
 | decrease, or below `warn_kg_co2e_yr` | ✅ pass | nothing |
 | between `warn` and `ack` thresholds | ✅ pass, with a warning in the comment | reviewer reads it |
 | at or above `ack_kg_co2e_yr` | ❌ "carbon acknowledgement required" | apply a suggestion, **or** add the label `eg/carbon-accepted` **and** submit a pull-request review (Comment or Approve) on the latest commit giving the reason; the same person labels and reviews, and needs write access → the check re-runs and passes, recording who accepted and why. A new push needs a new review (E1) |
-| plan failed or nothing quantifiable | ⚪ pass, "not evaluated" with the reason | nothing — other CI owns syntax errors |
+| plan failed or nothing quantifiable | ❌ "not evaluated" with the reason (`gate.not_evaluated_conclusion: failure`, the shipped default; `neutral` is allowed, but GitHub counts neutral as passing a required check — ADR-0022) | fix the plan, or make it plannable |
 
 4. The gate never pushes to the branch, never merges, and never decides. Whether a failing check blocks
    merging is the team's branch-protection choice. Merge is still Gate 2 — a human.
@@ -97,13 +97,33 @@ Region comes from the resource's provider configuration in the plan JSON. Tags-o
 | no telemetry for a changed resource | treated as new: assumption band | as computed |
 | provider mirror missing in CI | job fails loudly — a configuration error, not a carbon result | fail |
 | GitHub API error posting the comment | 2 retries, then the job log carries the full comment | job result unchanged |
+| evaluate artefact missing, malformed, or for another commit or repository | publish refuses it, ledgered; no comment | ❌ fail (fail closed, as a crashed job did before) |
+| PR's current head is not the evaluated commit, or the PR lookup fails | nothing published (the newer push has its own run); ledgered | a required check stays pending |
+| PR changes anything under `.github/` | evaluation not trusted (the PR's own workflow files ran it); ledgered; no comment | ❌ fail — a maintainer merges workflow changes on their own |
+| PR targets a branch other than the default, or another open PR on the same commit does, or changes `.github/` | the check is per commit, so it cannot be trusted; ledgered; no comment | ❌ fail (ADR-0022) |
+| GitHub API error creating the check run | ledgered; a required check stays pending, so merge stays blocked | — |
 | suggestion fails plan after 3 repairs | suggestion dropped, noted in the ledger | unaffected |
 
 ## 6. Security
 
-- Runs on `pull_request`, with no secrets and a read-only token for fork PRs. For same-repo PRs the job
-  has `pull-requests: write` to post the comment. For fork PRs, use the two-workflow pattern
-  (`pull_request` builds the comment as an artefact; a `workflow_run` job with write permission posts it).
+- **Two steps, so no token ever shares a process with planning (E1).**
+  - *Evaluate* (`emissiongate-gate.yml`, on `pull_request` and `pull_request_review`): `contents: read`
+    only and no `GITHUB_TOKEN`. `emissiongate gate --ci --config-from-base` plans base and head and
+    writes `evaluation.json` (`GateEvaluation`, DATA_CONTRACTS), uploaded as `emissiongate-gate-<PR>`.
+  - *Publish* (`emissiongate-publish.yml`, on `workflow_run`): the definition always comes from the
+    default branch, and it never checks out or runs PR code. `emissiongate gate-publish` reads the
+    artefact as untrusted data: size cap (2 MB), strict schema with extra fields refused, bound to
+    the event's `workflow_run.head_sha` and repository; the PR number is used only if the API says
+    that PR's head is this commit, and is refused when the PR changes `.github/`, since then its
+    evaluate run used the PR's own workflow. Every open PR on the commit must target the default
+    branch (`--base-branch`) and leave `.github/` unchanged, because a check run belongs to the
+    commit. Non-finite or negative figures are refused. It
+    re-derives the status in `core/verdict.py` with the default
+    branch's `.emissiongate/policy.yaml`, never accepts an acceptance from the artefact, looks up the
+    acknowledgement itself, re-renders the comment from the data, and sets the check run
+    `EmissionGate / carbon` (`checks: write`). It keeps its own ledger with the artefact's SHA-256.
+  - Fork PRs work the same way. Make `EmissionGate / carbon` the required check, not the evaluate job.
+  - `gate --ci --post` (one job) still works but warns: it holds the token while planning.
 - `tofu init -plugin-dir` from the vetted mirror means only the AWS provider is available. Untrusted HCL in
   a PR cannot pull in the `external` data source or any other provider that executes programs at plan time.
 - Dummy credentials and `-refresh=false`: planning never contacts AWS.

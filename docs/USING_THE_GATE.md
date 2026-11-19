@@ -52,6 +52,11 @@ flowchart LR
 > the pull request's tree can configure it; and an acknowledgement is a review on the head commit. See
 > [estate-repo/.github/workflows/emissiongate-gate.yml](../estate-repo/.github/workflows/emissiongate-gate.yml)
 > and [THREAT_MODEL.md](THREAT_MODEL.md).
+>
+> **Since 19 Nov 2026** the gate is two workflows. `emissiongate-gate.yml` evaluates with no token;
+> [`emissiongate-publish.yml`](../estate-repo/.github/workflows/emissiongate-publish.yml) runs after it,
+> never touches PR code, and posts the comment and the `EmissionGate / carbon` check (GATE.md §6).
+> Steps 13–15 below now happen in that second workflow.
 
 The whole job on PR #1 took about 69 seconds; the carbon check itself took 25.8 seconds.
 
@@ -101,12 +106,13 @@ emissiongate gate --estate-dir . --base <main commit> --head <PR commit> \
 8. **Screen the PR's code before planning it.** Untrusted HCL is planned only if it cannot reach the
    network or read secrets at plan time: no data sources, no non-local modules, no custom provider
    endpoints, no remote backend, no provider other than AWS, no absolute-path file reads
-   (`core/safety.py`). Anything else makes the PR "not evaluated" — a neutral check, never a plan.
+   (`core/safety.py`). Anything else makes the PR "not evaluated" — never a plan.
 9. **Plan both versions.** `tofu plan` on `main` and on the PR head, each turned into JSON. Planning only
    describes what would change; it never creates anything. Plans use `-refresh=false`, the providers
    from the local mirror, and no credentials: tofu's environment is stripped of `AWS_*` and token
    variables, and the estate's provider block uses dummy keys. If either plan fails, the comment says
-   "not evaluated" and the check passes as neutral.
+   "not evaluated". The PR #1 run predates 19 Nov 2026, when "not evaluated" passed as neutral; it
+   now fails unless the policy sets `gate.not_evaluated_conclusion: neutral` (ADR-0022).
 10. **Find what changed.** Resources are paired by address and marked added, removed or changed. Only
     energy-relevant settings count: instance type, count and region of Auto Scaling groups (with their
     launch templates and schedules), EC2 instances, RDS instances and EBS volumes. Everything else is
@@ -142,7 +148,7 @@ emissiongate gate --estate-dir . --base <main commit> --head <PR commit> \
 | a decrease, or under 25 kgCO2e | ✅ pass | nothing |
 | 25 to 100 kgCO2e | ✅ pass with a warning | the reviewer reads the comment |
 | 100 kgCO2e or more | ❌ acknowledgement required | commit a suggestion, or add `eg/carbon-accepted` and a review giving the reason — PR #1 was here, at +683.5, until a human accepted it with a reason |
-| plan failed, or code screened out | ⚪ not evaluated (passes) | nothing; other CI owns syntax errors |
+| plan failed, or code screened out | ❌ not evaluated (neutral if the policy says so) | fix the plan, or make the code plannable |
 | tags only | a comment stating coverage (nothing carbon-relevant) | nothing |
 
 ## Turning a red check green
@@ -184,14 +190,16 @@ published number.
 | The PR changes no `.tf` file | the workflow's `paths` filter skips it |
 | Someone only posts a comment | comments are not a trigger event |
 | The repository has no workflow file | each repository opts in on its own |
-| The PR comes from a fork | it runs, but GitHub gives forks a read-only token, so the comment appears only in the job log. The fix, a second workflow that posts the comment, is designed, not built |
+| The PR comes from a fork | it runs the same way: the evaluate workflow needs no token, and the publish workflow posts the comment and check from the base repository (since 19 Nov 2026; before that, the comment appeared only in the job log) |
 
 ## Adding the gate to another repository
 
 **Steps**
 
-1. Copy [`estate-repo/.github/workflows/emissiongate-gate.yml`](../estate-repo/.github/workflows/emissiongate-gate.yml)
-   into the repository's `.github/workflows/`. Nothing changes on the `emissiongate` side.
+1. Copy both [`emissiongate-gate.yml`](../estate-repo/.github/workflows/emissiongate-gate.yml) and
+   [`emissiongate-publish.yml`](../estate-repo/.github/workflows/emissiongate-publish.yml) from
+   `estate-repo/.github/workflows/` into the repository's `.github/workflows/` on the default branch
+   (a `workflow_run` workflow only runs from there). Nothing changes on the `emissiongate` side.
 2. Pin the engine: replace `ref: main` with a commit SHA or tag, so a push to `emissiongate` cannot
    change the gate unannounced.
 3. Replace the synthetic-telemetry step with real utilisation, written **outside the checkout** to
@@ -201,7 +209,12 @@ published number.
 4. To set thresholds per repository, commit `.emissiongate/policy.yaml` (and optionally
    `suppressions.yaml`) to the default branch. With `--config-from-base` the gate reads them from the
    PR's base commit, so a PR cannot loosen its own check.
-5. Optionally, require the `gate` check in branch protection, so an unacknowledged increase blocks merge.
+5. Optionally, require the `EmissionGate / carbon` check in branch protection, so an unacknowledged
+   increase blocks merge. Do not require the `evaluate` job: it passes whatever the carbon result.
+   Leave `gate.not_evaluated_conclusion: failure` as shipped: GitHub counts a neutral check as
+   passing, so with `neutral` a PR that is not evaluated can merge.
+   Pull requests that change `.github/` always fail the check (their evaluation ran the PR's own
+   workflow); merge those separately.
 
 **Works today**
 
@@ -221,7 +234,7 @@ published number.
   mirrored; other pins fail to initialise.
 - **Coverage.** S3, Lambda, EKS and other resource types are listed as not carbon-relevant.
   Only AWS factors are vendored; Azure and Google Cloud need their own factor files.
-- **Real utilisation data** (step 3), a **pinned version** (step 2), and the **fork-PR workflow**.
+- **Real utilisation data** (step 3) and a **pinned version** (step 2).
 - **Cost figures** are synthetic list prices, labelled as such.
 
 What is built and what is designed only, across the whole project:

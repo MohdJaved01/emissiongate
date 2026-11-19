@@ -14,6 +14,7 @@ from emissiongate.config import load_settings
 from emissiongate.core import hcl
 from emissiongate.estate import terraform as tfw
 from emissiongate.orchestrator.gate import Gate
+from emissiongate.orchestrator.publish import load_evaluation
 
 ROOT = Path(__file__).resolve().parents[2]
 pytestmark = [pytest.mark.tofu, pytest.mark.slow]
@@ -94,6 +95,10 @@ def test_new_gpu_fleet_requires_acknowledgement(tmp_path, estate, pr_repo) -> No
     prediction = json.loads((run.run_dir / "prediction.json").read_text())
     assert prediction["head_sha"] == r.head_sha
     assert run.exit_code == 0  # without --post the gate only prints
+    # The artefact the separate publish step reads (GATE §5) round-trips through its loader.
+    ev, _, _ = load_evaluation(run.run_dir / "evaluation.json")
+    assert ev.result.status == "ack_required" and ev.result.head_sha == r.head_sha
+    assert ev.comment and ev.result.accepted_by is None
 
 
 def test_scale_out_warns_and_suggests_graviton(tmp_path, estate, pr_repo) -> None:

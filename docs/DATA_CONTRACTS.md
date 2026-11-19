@@ -296,6 +296,22 @@ class GateResult(Frozen):
     projection_event_id: int | None = None  # ledger event holding every projection
 
 
+class GateEvaluation(Frozen):
+    """runs/<run_id>/evaluation.json — the only input the privileged publish step reads from the
+    unprivileged evaluate step (THREAT_MODEL B5). Untrusted there: size-capped, schema-validated
+    with extra fields refused, bound to the trusted head SHA and repository, and re-rendered."""
+
+    schema_version: Literal[1] = 1
+    repo: str  # "owner/name", or "local"
+    result: GateResult  # status before acknowledgement: never "accepted"
+    reason: str | None = None  # why not evaluated
+    notes: list[str] = Field(default_factory=list)
+    comment: bool  # False only when the plan had no resource changes at all
+    runtime_s: float
+    energy_wh: float | None = None
+    energy_label: Literal["measured", "estimated"] | None = None
+
+
 class GatePrediction(Frozen):
     """runs/<run_id>/prediction.json — kept as the artefact emissiongate-gate-<PR> (GATE §7)."""
 
@@ -364,6 +380,9 @@ class Score(Frozen):
 ```
 
 ## Validation rules outside the type system
+
+- 19 Nov 2026 (E1): `GateEvaluation` added. The gate is split into an unprivileged evaluate step
+  and a privileged publish step; this is the artefact between them (GATE §5).
 
 - 5 Oct 2026 (M6.5 invariant review): `Projection` gained `kg_co2e_yr_before_low/high` so a removal or
   a change to a resource without telemetry is published as a range on both sides; `GateSuggestion`

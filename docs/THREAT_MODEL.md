@@ -97,12 +97,31 @@ Status: **built** (control and test exist), **E1** (in this phase), **later** (n
 | Untrusted text (addresses, attribute values, tofu errors, reasons) injects Markdown or HTML, `@mentions` or links into the comment | T, S | Escape for Markdown and HTML, neutralise mentions and autolinks, cap length; code spans and fences sized to their content; attribute values validated before display | built (`test_output_escaping.py`) |
 | A diff in a suggestion closes its code fence early | T | Fence longer than any backtick run in the diff | built |
 | Silent partial coverage reads as "all good" | R | Every comment states resources seen, quantified, not quantified and not carbon-relevant | built |
-| Token with more permission than needed | E | Per-job `permissions`; comment job has `pull-requests: write` only | built (reference workflow); two-workflow fork pattern E1 |
+| Token with more permission than needed | E | Per-job `permissions`; the evaluate job has `contents: read` only; the publish job has `checks: write`, `pull-requests: write` and reads | built (`test_workflows.py`) |
+| Plan-time code reads the token from the gate process or its parent | I, E | Two-step gate: evaluate runs with no token at all; publish never runs PR code (`workflow_run`, definition from the default branch) | built (reference workflow, `test_workflows.py`) |
+| A PR edits the evaluate workflow (a `pull_request` run uses the PR's own workflow files) and uploads a forged `evaluation.json`, e.g. with no projections | T, E | Publish runs only for `workflow_run.path` = the evaluate workflow, and fails the check closed when the PR changes anything under `.github/` (or more files than it can list) | built (`test_publish.py`, `test_workflows.py`) |
+| A second PR with the same head commit (into another branch, or with its own workflow files) writes the latest check run on that commit, which branch protection on the first PR reads | T, E | Every open PR on the commit (`commits/{sha}/pulls`, plus the artefact's PR) must target the trusted default branch and leave `.github/` unchanged; otherwise the check fails closed | built (`test_publish.py`) |
+| A forged `evaluation.json` claims an acceptance, targets another PR or commit, or hides a figure as NaN, Infinity or a negative value | T, S, E | Size cap; strict schema; non-finite and negative figures refused; bound to the event's head SHA and repo; PR head confirmed via the API or nothing is published; status re-derived in `core/verdict.py` with the default branch's policy; acceptance never read from the artefact | built (`test_publish.py`) |
+| Artefact text (reasons, notes, addresses, run ids, SHAs, parameter keys) injects into the comment, the check summary or the privileged job log | T | Re-rendered from validated data with every string escaped; `energy_label` is one of two words; the artefact's `comment.md` is never read | built |
 | Comment spam or flooding | D | One sticky comment, idempotent upsert | built |
 
 ## Residual risks and assumptions
 
-- **Token in the parent process (open, E1).** The gate process holds `GITHUB_TOKEN` while OpenTofu plans as its child. Tofu's own environment is scrubbed, but the parent's `/proc/<pid>/environ` is readable by the same user. The screen now blocks every file read it cannot see; the structural fix is to plan in a step or job without the token and post from a separate one (two-job pattern), or to run tofu as another user (sandboxed planning).
+- **Token in the parent process (closed in the reference workflow, 19 Nov 2026).** Evaluate holds no
+  token, and publish runs no PR code. It stays open for anyone using the single-job `gate --ci --post`,
+  which now warns.
+- **Numbers from a compromised evaluate job (open, E1 sandboxed planning).** With the workflow files
+  unchanged, the evaluate job runs only the engine and the screened plan. Publish re-derives the
+  status but has to trust the projections; plan-time code execution in the evaluate job could forge
+  them. The screen and the vetted mirror stop the known paths; sandboxed planning is the defence in
+  depth.
+- **"Not evaluated" (policy, ADR-0022 proposed).** The shipped policy fails it. GitHub counts a
+  `neutral` check as passing a required check, so a repository that sets
+  `gate.not_evaluated_conclusion: neutral` lets a PR that trips the screen, or breaks its plan,
+  merge without an acknowledgement. A policy without the key fails.
+- **PRs that change `.github/`** always fail the check, including Dependabot action updates. A
+  maintainer reviews and merges those on their own (bypass or a separate ruleset).
+- **The engine is installed from `ref: main`** in both workflows. A release pin is an E2 item.
 
 - In plan-JSON mode the customer's plan job is trusted. If it plans untrusted PR code with real
   credentials, that risk is theirs and outside EmissionGate's control; the recipes say so.

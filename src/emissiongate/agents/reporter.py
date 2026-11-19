@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from emissiongate.contracts import GateResult, Projection, ResourceChange
 from emissiongate.core.factors import Factors
+from emissiongate.core.verdict import conclusion
 from emissiongate.report.render import published_delta, render_markdown
-from emissiongate.report.sanitize import checked
+from emissiongate.report.sanitize import checked, code, text
 from emissiongate.tools.github import MARKER
 
 STATUS = {
@@ -96,6 +97,7 @@ def gate_comment(
     energy_label: str | None,
     reason: str | None,
     notes: list[str] | None = None,
+    publish_run_id: str | None = None,
 ) -> str:
     icon, label = STATUS[result.status]
     by_addr = {p.address: p for p in result.projections}
@@ -145,4 +147,63 @@ def gate_comment(
         energy_wh=energy_wh,
         energy_label=energy_label,
         notes=notes or [],
+        publish_run_id=publish_run_id,
+        unevaluated_conclusion=conclusion("not_evaluated", gate_cfg),
+    )
+
+
+def check_output(
+    result: GateResult,
+    gate_cfg: dict,
+    reason: str | None,
+    factors_source: str,
+    publish_run_id: str,
+    evidence_event_id: int,
+) -> tuple[str, str]:
+    """(title, summary) for the check run: fixed wording, core numbers, escaped text, provenance."""
+    _, label = STATUS[result.status]
+    net = result.net_kg_co2e_yr
+    if result.status == "not_evaluated":
+        title = "not evaluated"
+        lines = [f"Not evaluated: {text(reason or 'no reason recorded')}."]
+    else:
+        title = f"{label}: {net:+.1f} kgCO2e/yr"
+        lines = [
+            f"Net change {net:+.1f} kgCO2e/yr (range {result.net_kg_co2e_yr_low:+.1f} to "
+            f"{result.net_kg_co2e_yr_high:+.1f}).",
+            f"Thresholds: warning at {float(gate_cfg['warn_kg_co2e_yr']):,.0f}, acknowledgement at "
+            f"{float(gate_cfg['ack_kg_co2e_yr']):,.0f} kgCO2e/yr (policy.yaml).",
+        ]
+    seen = sum(1 for c in result.changes if c.change != "unchanged")
+    quantified = sum(1 for p in result.projections if p.quantified)
+    lines.append(f"Coverage: {seen} changed resources seen, {quantified} quantified.")
+    if result.status == "accepted":
+        lines.append(f"Accepted by {checked('login', result.accepted_by or '')} on this commit.")
+    projections = (
+        f", projections #{result.projection_event_id}" if result.projection_event_id else ""
+    )
+    lines.append(
+        f"Provenance: Cloud Carbon Footprint coefficients ({code(factors_source)}), grid tier "
+        f"`annual`. Ledger: publish run {code(publish_run_id)} (evaluation read at event "
+        f"#{evidence_event_id}); evaluation run "
+        f"{code(result.ledger_run_id)}{projections}."
+    )
+    lines.append("The pull request comment has the breakdown and suggestions.")
+    return title, "\n\n".join(lines)
+
+
+def check_unusable() -> tuple[str, str]:
+    return (
+        "evaluation unusable",
+        "The evaluate job's artefact was missing, malformed, or not for this commit, so no result "
+        "is published and this check fails closed. The publish job's log and ledger say why.",
+    )
+
+
+def check_untrusted_workflow(problem: str) -> tuple[str, str]:
+    return (
+        "not trusted: workflow files changed",
+        f"This pull request's evaluation cannot be trusted: {text(problem)}. A `pull_request` run "
+        "uses the pull request's own workflow files, so it could have produced any result. The "
+        "check fails closed; a maintainer reviews the workflow change and merges it on its own.",
     )

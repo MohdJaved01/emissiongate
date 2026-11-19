@@ -21,7 +21,14 @@ from pathlib import Path
 from emissiongate.agents import diff_collector, reporter
 from emissiongate.agents.diff_collector import Unit
 from emissiongate.config import Settings, UntrustedInput, check_trusted
-from emissiongate.contracts import GatePrediction, GateResult, GateSuggestion, Projection, Resource
+from emissiongate.contracts import (
+    GateEvaluation,
+    GatePrediction,
+    GateResult,
+    GateSuggestion,
+    Projection,
+    Resource,
+)
 from emissiongate.core import energy, hcl, patches, safety
 from emissiongate.core import projection as pj
 from emissiongate.core.factors import FACTORS_FILE, FactorNotFound, Factors
@@ -29,6 +36,7 @@ from emissiongate.core.ledger import Ledger
 from emissiongate.core.policy import Policy
 from emissiongate.core.regions import region_time_zone
 from emissiongate.core.utilisation import summarise
+from emissiongate.core.verdict import conclusion, verdict
 from emissiongate.orchestrator.budget import Budget, BudgetExceeded
 from emissiongate.orchestrator.measure import Tracker
 from emissiongate.tools import gitrefs, metrics, tf
@@ -175,6 +183,110 @@ def _solve_u(factors: Factors, state: pj.UnitState, kg_target: float, u_gpu: flo
     return max(0.0, min(1.0, (kg_target - e0) / (e1 - e0)))
 
 
+def trusted_settings(
+    s: Settings, repo: Path, ref: str, tmp: Path, ledger: Ledger
+) -> tuple[Settings, dict[str, str]]:
+    """Settings with policy and suppressions read from commit `ref` of `repo` (THREAT_MODEL B2).
+
+    `.emissiongate/policy.yaml` and `.emissiongate/suppressions.yaml` are read from that commit's
+    tree (the base commit when evaluating, the default branch when publishing), when present;
+    otherwise the configured files apply. Every git read is ledgered (invariant 8).
+    """
+    sources = {"policy": str(s.policy_path), "suppressions": str(s.suppressions_path)}
+    sha = gitrefs.rev_parse(repo, ref)
+    ledger.append(
+        state=STATE,
+        kind="tool_call",
+        agent="diff_collector",
+        tool="git.rev_parse",
+        detail={"ref": ref, "sha": sha},
+    )
+    trusted = tmp / "trusted-config"
+    trusted.mkdir(exist_ok=True)
+    updates: dict[str, Path] = {}
+    for key, name in (("policy", "policy.yaml"), ("suppressions", "suppressions.yaml")):
+        path = f".emissiongate/{name}"
+        blob = gitrefs.read_blob(repo, sha, path)
+        ledger.append(
+            state=STATE,
+            kind="tool_call",
+            agent="diff_collector",
+            tool="git.read_blob",
+            detail={"sha": sha, "path": path, "found": blob is not None},
+        )
+        if blob is not None:
+            (trusted / name).write_bytes(blob)
+            updates[f"{key}_path"] = trusted / name
+            sources[key] = f"commit:{sha}:{path}"
+    return dataclasses.replace(s, **updates), sources
+
+
+def accept(
+    ledger: Ledger, github: GitHub, pr: int, label: str, head_sha: str, net: float, state: str
+) -> tuple[str | None, str | None]:
+    """Acknowledgement for exactly `head_sha` (THREAT_MODEL B4), ledgered; errors fail closed."""
+    accepted_by = accepted_reason = None
+    try:
+        accepted_by, accepted_reason = github.acceptance(pr, label, head_sha=head_sha)
+        ledger.append(
+            state=state,
+            kind="tool_call",
+            agent="reporter",
+            tool="github.acceptance",
+            detail={
+                "label": label,
+                "head_sha": head_sha,
+                "found": bool(accepted_by),
+                "reason_found": bool(accepted_reason),
+            },
+        )
+    except GitHubError as exc:
+        ledger.append(
+            state=state,
+            kind="fallback",
+            agent="reporter",
+            tool="github.acceptance",
+            detail={"reason": str(exc)[:300]},
+        )
+    if not (accepted_by and accepted_reason):
+        return None, None
+    ledger.append(
+        state="ACCEPTED",
+        kind="human_gate",
+        detail={
+            "gate": "carbon acknowledgement",
+            "accepted_by": accepted_by,
+            "reason": accepted_reason[:500],
+            "head_sha": head_sha,
+            "net_kg_co2e_yr": net,
+        },
+    )
+    return accepted_by, accepted_reason
+
+
+def upsert(ledger: Ledger, github: GitHub, pr: int, comment: str, state: str) -> str | None:
+    """The one sticky comment; a GitHub error is ledgered and the comment stays in the job log."""
+    try:
+        url = github.upsert_comment(pr, comment)
+    except GitHubError as exc:
+        ledger.append(
+            state=state,
+            kind="fallback",
+            agent="reporter",
+            tool="github.upsert_comment",
+            detail={"reason": str(exc)[:300], "comment_in_job_log": True},
+        )
+        return None
+    ledger.append(
+        state=state,
+        kind="tool_call",
+        agent="reporter",
+        tool="github.upsert_comment",
+        detail={"pr": pr},
+    )
+    return url
+
+
 class Gate:
     def __init__(
         self,
@@ -195,42 +307,10 @@ class Gate:
         self.config_from_base = config_from_base
 
     def _trusted_settings(self, tmp: Path, ledger: Ledger) -> tuple[Settings, dict[str, str]]:
-        """Settings with policy and suppressions from trusted sources only (THREAT_MODEL B2).
-
-        With `config_from_base`, `.emissiongate/policy.yaml` and `.emissiongate/suppressions.yaml`
-        are read from the base commit's tree (never the head's), when present; otherwise the
-        configured files apply. Every git read is ledgered (invariant 8).
-        """
-        s = self.s
-        sources = {"policy": str(s.policy_path), "suppressions": str(s.suppressions_path)}
         if not self.config_from_base:
-            return s, sources
-        base_sha = gitrefs.rev_parse(self.estate_dir, self.base_ref)
-        ledger.append(
-            state=STATE,
-            kind="tool_call",
-            agent="diff_collector",
-            tool="git.rev_parse",
-            detail={"ref": self.base_ref, "sha": base_sha},
-        )
-        trusted = tmp / "trusted-config"
-        trusted.mkdir()
-        updates: dict[str, Path] = {}
-        for key, name in (("policy", "policy.yaml"), ("suppressions", "suppressions.yaml")):
-            path = f".emissiongate/{name}"
-            blob = gitrefs.read_blob(self.estate_dir, base_sha, path)
-            ledger.append(
-                state=STATE,
-                kind="tool_call",
-                agent="diff_collector",
-                tool="git.read_blob",
-                detail={"sha": base_sha, "path": path, "found": blob is not None},
-            )
-            if blob is not None:
-                (trusted / name).write_bytes(blob)
-                updates[f"{key}_path"] = trusted / name
-                sources[key] = f"base:{base_sha}:{path}"
-        return dataclasses.replace(s, **updates), sources
+            s = self.s
+            return s, {"policy": str(s.policy_path), "suppressions": str(s.suppressions_path)}
+        return trusted_settings(self.s, self.estate_dir, self.base_ref, tmp, ledger)
 
     def run(self) -> GateRun:
         with tempfile.TemporaryDirectory(prefix="eg-gate-") as tmp:
@@ -626,66 +706,10 @@ class Gate:
         no_comment: bool,
     ) -> GateRun:
         gate_cfg = c.policy.gate
-        q = [p for p in projections if p.quantified]
-
-        def side(p: Projection, which: str) -> tuple[float, float]:
-            after = getattr(p, f"kg_co2e_yr_after_{which}")
-            before = getattr(p, f"kg_co2e_yr_before_{which}")
-            a = p.kg_co2e_yr_after if after is None else after
-            b = p.kg_co2e_yr_before if before is None else before
-            return a, b
-
-        net = sum(p.kg_co2e_yr_after - p.kg_co2e_yr_before for p in q)
-        low = sum(a - b for a, b in (side(p, "low") for p in q))
-        high = sum(a - b for a, b in (side(p, "high") for p in q))
-        low, high = min(low, high), max(low, high)
-        if status == "pass" and projections:
-            if not q:
-                status, reason = "not_evaluated", "nothing quantifiable"
-            elif net >= float(gate_cfg["ack_kg_co2e_yr"]):
-                status = "ack_required"
-            elif net >= float(gate_cfg["warn_kg_co2e_yr"]):
-                status = "pass_with_warning"
-        accepted_by = accepted_reason = None
-        if status == "ack_required" and self.github is not None and self.pr:
-            try:
-                accepted_by, accepted_reason = self.github.acceptance(
-                    self.pr, gate_cfg["ack_label"], head_sha=head_sha
-                )
-                c.ledger.append(
-                    state=STATE,
-                    kind="tool_call",
-                    agent="reporter",
-                    tool="github.acceptance",
-                    detail={
-                        "label": gate_cfg["ack_label"],
-                        "head_sha": head_sha,
-                        "found": bool(accepted_by),
-                        "reason_found": bool(accepted_reason),
-                    },
-                )
-            except GitHubError as exc:
-                c.ledger.append(
-                    state=STATE,
-                    kind="fallback",
-                    agent="reporter",
-                    tool="github.acceptance",
-                    detail={"reason": str(exc)[:300]},
-                )
-            if accepted_by and accepted_reason:
-                status = "accepted"
-                c.ledger.append(
-                    state="ACCEPTED",
-                    kind="human_gate",
-                    detail={
-                        "gate": "carbon acknowledgement",
-                        "accepted_by": accepted_by,
-                        "reason": accepted_reason[:500],
-                        "head_sha": head_sha,
-                        "net_kg_co2e_yr": net,
-                    },
-                )
-        result = GateResult(
+        status, why, totals = verdict(status, projections, gate_cfg)
+        reason = reason or why
+        net, low, high = totals.net, totals.low, totals.high
+        evaluated = GateResult(
             pr_number=self.pr,
             base_sha=base_sha,
             head_sha=head_sha,
@@ -696,13 +720,37 @@ class Gate:
             changes=changes,
             projections=projections,
             suggestions=suggestions,
-            accepted_by=accepted_by,
-            accepted_reason=accepted_reason,
             ledger_run_id=c.ledger.run_id,
             projection_event_id=getattr(self, "_projection_event", None),
         )
         measurement = tracker.stop()
         runtime_s = time.monotonic() - t0
+        energy_wh = measurement.energy_kwh * 1000 if measurement else None
+        energy_label = measurement.label if measurement else None
+        # The artefact a separate, privileged publish step reads (GATE §5, THREAT_MODEL B5).
+        evaluation = GateEvaluation(
+            repo=self.repo or "local",
+            result=evaluated,
+            reason=reason,
+            notes=list(c.notes),
+            comment=not no_comment,
+            runtime_s=runtime_s,
+            energy_wh=energy_wh,
+            energy_label=energy_label,
+        )
+        (run_dir / "evaluation.json").write_text(
+            evaluation.model_dump_json(indent=1), encoding="utf-8"
+        )
+        result = evaluated
+        if status == "ack_required" and self.github is not None and self.pr:
+            by, why_accepted = accept(
+                c.ledger, self.github, self.pr, gate_cfg["ack_label"], head_sha, net, STATE
+            )
+            if by:
+                status = "accepted"
+                result = evaluated.model_copy(
+                    update={"status": status, "accepted_by": by, "accepted_reason": why_accepted}
+                )
         comment = None
         if not no_comment:
             comment = reporter.gate_comment(
@@ -711,8 +759,8 @@ class Gate:
                 c.factors,
                 int(c.policy.thresholds["lookback_days"]),
                 runtime_s,
-                measurement.energy_kwh * 1000 if measurement else None,
-                measurement.label if measurement else None,
+                energy_wh,
+                energy_label,
                 reason,
                 c.notes,
             )
@@ -735,30 +783,15 @@ class Gate:
             (run_dir / "comment.md").write_text(comment, encoding="utf-8", newline="\n")
         url = None
         if comment and self.github is not None and self.pr:
-            try:
-                url = self.github.upsert_comment(self.pr, comment)
-                c.ledger.append(
-                    state=status.upper(),
-                    kind="tool_call",
-                    agent="reporter",
-                    tool="github.upsert_comment",
-                    detail={"pr": self.pr},
-                )
-            except GitHubError as exc:
-                c.ledger.append(
-                    state=status.upper(),
-                    kind="fallback",
-                    agent="reporter",
-                    tool="github.upsert_comment",
-                    detail={"reason": str(exc)[:300], "comment_in_job_log": True},
-                )
+            url = upsert(c.ledger, self.github, self.pr, comment, status.upper())
         c.ledger.append(
             state=status.upper(),
             kind="transition",
             detail={"status": status, "net_kg_co2e_yr": net, "low": low, "high": high},
         )
         c.ledger.close()
-        exit_code = 1 if status == "ack_required" and self.github is not None else 0
+        failing = conclusion(status, gate_cfg) == "failure"
+        exit_code = 1 if failing and self.github is not None else 0
         return GateRun(result, comment, run_dir, exit_code, url, c.notes)
 
 
